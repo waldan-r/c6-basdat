@@ -4,7 +4,7 @@ import uuid
 # Create your views here.
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from .models import UserAccount, AccountRole, Customer, Organizer, Role
+from .models import UserAccount, AccountRole, Customer, Organizer, Role, Artist
 
 def login_view(request):
     # login
@@ -113,3 +113,69 @@ def dashboard_view(request):
         'username': request.session.get('username')
     }
     return render(request, 'dashboard.html', context)
+
+def artist_list_view(request):
+    # akses untuk semua orang
+    artists = Artist.objects.all()
+    context = {
+        'artists': artists,
+        'role': request.session.get('role', 'GUEST')
+    }
+    return render(request, 'artists.html', context)
+
+def artist_manage_view(request):
+
+    if request.method == 'POST':
+        action = request.POST.get('action')
+
+        # CREATE ARTIST
+        if action == 'create':
+            name = request.POST.get('name')
+            genre = request.POST.get('genre', '')
+            
+            if not name:
+                messages.error(request, "Name wajib diisi!")
+            else:
+                Artist.objects.create(
+                    artist_id=str(uuid.uuid4()),
+                    name=name,
+                    genre=genre
+                )
+                messages.success(request, "Artist baru berhasil ditambahkan!")
+
+        # UPDATE ARTIST
+        elif action == 'update':
+            artist_id = request.POST.get('artist_id')
+            name = request.POST.get('name')
+            genre = request.POST.get('genre', '')
+
+            if not name:
+                messages.error(request, "Name wajib diisi!")
+            else:
+                try:
+                    artist = Artist.objects.get(artist_id=artist_id)
+                    artist.name = name
+                    artist.genre = genre
+                    artist.save()
+                    messages.success(request, "Data artist berhasil diperbarui!")
+                except Artist.DoesNotExist:
+                    messages.error(request, "Data artist tidak ditemukan!")
+
+        # DELETE ARTIST
+        elif action == 'delete':
+            artist_id = request.POST.get('artist_id')
+            try:
+                artist = Artist.objects.get(artist_id=artist_id)
+                artist.delete()
+                messages.success(request, "Artist berhasil dihapus!")
+            except Artist.DoesNotExist:
+                messages.error(request, "Data artist tidak ditemukan!")
+
+        return redirect('artist_manage')
+
+    artists = Artist.objects.all()
+    context = {
+        'artists': artists,
+        'role': request.session.get('role', 'GUEST')
+    }
+    return render(request, 'artist_manage.html', context)

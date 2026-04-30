@@ -1,0 +1,151 @@
+{% extends 'base.html' %}
+
+
+{% block content %}
+
+    <div class="container mx-auto px-6 py-8">
+        {% if messages %}
+            {% for message in messages %}
+                <div class="mb-4 p-4 rounded {% if message.tags == 'error' %}bg-red-100 text-red-700{% else %}bg-green-100 text-green-700{% endif %}">
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-3xl font-bold text-gray-800">Manajemen Artist</h1>
+            <button onclick="openModal('createModal')" class="bg-blue-600 text-white px-4 py-2 rounded shadow hover:bg-blue-700">
+                + Tambah Artist
+            </button>
+        </div>
+
+        <!-- tabel artist -->
+        <div class="bg-white rounded-lg shadow-md overflow-hidden">
+            <table class="min-w-full leading-normal">
+                <thead>
+                    <tr class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal">
+                        <!-- <th class="py-3 px-6 text-left">Artist ID</th> -->
+                        <th class="py-3 px-6 text-left">Nama Artist</th>
+                        <th class="py-3 px-6 text-left">Genre</th>
+                        <th class="py-3 px-6 text-center">Aksi</th>
+                    </tr>
+                </thead>
+                <tbody class="text-gray-600 text-sm font-light">
+                    {% for artist in artists %}
+                    <tr class="border-b border-gray-200 hover:bg-gray-100">
+                        <!-- <td class="py-3 px-6 text-left whitespace-nowrap">{{ artist.artist_id }}</td> -->
+                        <td class="py-3 px-6 text-left">{{ artist.name }}</td>
+                        <td class="py-3 px-6 text-left">{{ artist.genre|default:"-" }}</td>
+                        <td class="py-3 px-6 text-center">
+                            <button onclick="openUpdateModal('{{ artist.artist_id }}', '{{ artist.name|escapejs }}', '{{ artist.genre|escapejs }}')" class="bg-yellow-500 text-white px-3 py-1 rounded hover:bg-yellow-600 mr-2">Update</button>
+                            <button onclick="openDeleteModal('{{ artist.artist_id }}', '{{ artist.name|escapejs }}')" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600">Delete</button>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr><td colspan="3" class="text-center py-4">Belum ada data artist.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- modal buat create artist -->
+    <div id="createModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Tambah Artist Baru</h3>
+                <form method="POST" action="{% url 'artist_manage' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="create">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Nama Artist (Wajib)</label>
+                        <input type="text" name="name" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Genre (Opsional)</label>
+                        <input type="text" name="genre" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    </div>
+                    <div class="flex justify-end space-x-2 mt-4">
+                        <button type="button" onclick="closeModal('createModal')" class="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500">Batal</button>
+                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Create</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- modal buat update artist -->
+    <div id="updateModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">Update Artist</h3>
+                <form method="POST" action="{% url 'artist_manage' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="update">
+                    <input type="hidden" name="artist_id" id="update_artist_id">
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Nama Artist (Wajib)</label>
+                        <input type="text" name="name" id="update_name" required class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-gray-700 text-sm font-bold mb-2">Genre (Opsional)</label>
+                        <input type="text" name="genre" id="update_genre" class="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline">
+                    </div>
+                    <div class="flex justify-end space-x-2 mt-4">
+                        <button type="button" onclick="closeModal('updateModal')" class="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500">Batal</button>
+                        <button type="submit" class="bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">Update</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- modal buat delete artist -->
+    <div id="deleteModal" class="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full hidden z-50">
+        <div class="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div class="mt-3">
+                <h3 class="text-lg leading-6 font-medium text-red-600 mb-4">Konfirmasi Penghapusan</h3>
+                <p class="text-gray-600 mb-4">Apakah Anda yakin ingin menghapus artist berikut?</p>
+                <div class="bg-gray-100 p-3 rounded mb-4">
+                    <p class="text-sm"><strong>ID:</strong> <span id="delete_display_id"></span></p>
+                    <p class="text-sm"><strong>Nama:</strong> <span id="delete_display_name"></span></p>
+                </div>
+                <form method="POST" action="{% url 'artist_manage' %}">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="artist_id" id="delete_artist_id">
+                    <div class="flex justify-end space-x-2 mt-4">
+                        <button type="button" onclick="closeModal('deleteModal')" class="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500">Batal</button>
+                        <button type="submit" class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">Delete</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- kontrol modal -->
+    <script>
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        function openUpdateModal(id, name, genre) {
+            document.getElementById('update_artist_id').value = id;
+            document.getElementById('update_name').value = name;
+            // Handle nilai 'None' dari genre jika di db bernilai null
+            document.getElementById('update_genre').value = (genre === 'None') ? '' : genre; 
+            openModal('updateModal');
+        }
+
+        function openDeleteModal(id, name) {
+            document.getElementById('delete_artist_id').value = id;
+            document.getElementById('delete_display_id').innerText = id;
+            document.getElementById('delete_display_name').innerText = name;
+            openModal('deleteModal');
+        }
+    </script>
+{% endblock %}

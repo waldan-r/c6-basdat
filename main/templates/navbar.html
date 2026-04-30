@@ -10,6 +10,8 @@
                 <li><a href="/dashboard" class="hover:text-blue-500">Dashboard</a></li>
                 <li><a href="/venue/manage" class="hover:text-blue-500">Manajemen Venue</a></li>
                 <li><a href="/seats/manage" class="hover:text-blue-500">Manajemen Kursi</a></li>
+                <li><a href="/artists/" class="hover:text-blue-500">Artists</a></li>
+                <li><a href="/artists/manage" class="hover:text-blue-500">Manajemen Artist</a></li>
                 <li><a href="/ticket-category" class="hover:text-blue-500">Kategori Tiket</a></li>
                 <li><a href="/tickets/manage" class="hover:text-blue-500">Manajemen Tiket</a></li>
                 <li><a href="/orders/all" class="hover:text-blue-500">Semua Order</a></li>
@@ -20,6 +22,7 @@
             {% elif request.session.role == 'ORGANIZER' %}
                 <li><a href="/dashboard" class="hover:text-blue-500">Dashboard</a></li>
                 <li><a href="/events/my" class="hover:text-blue-500">Event Saya</a></li>
+                <li><a href="/artists" class="hover:text-blue-500">Artists</a></li>
                 <li><a href="/venue/manage" class="hover:text-blue-500">Manajemen Venue</a></li>
                 <li><a href="/seats/manage" class="hover:text-blue-500">Manajemen Kursi</a></li>
                 <li><a href="/ticket-category" class="hover:text-blue-500">Kategori Tiket</a></li>
