@@ -5,31 +5,45 @@
         </div>
         
         <ul class="flex space-x-4 items-center text-gray-700 font-medium">
+
             {% if request.session.role == 'ADMIN' %}
                 <li><a href="/dashboard" class="hover:text-blue-500">Dashboard</a></li>
-                <li><a href="/venue/manage" class="hover:text-blue-500">Venues</a></li>
-                <li><a href="/orders/all" class="hover:text-blue-500">All Orders</a></li>
-                <li class="bg-red-100 text-red-600 px-2 py-1 rounded text-xs">ADMIN</li>
+                <li><a href="/venue/manage" class="hover:text-blue-500">Manajemen Venue</a></li>
+                <li><a href="/seats/manage" class="hover:text-blue-500">Manajemen Kursi</a></li>
+                <li><a href="/ticket-category" class="hover:text-blue-500">Kategori Tiket</a></li>
+                <li><a href="/tickets/manage" class="hover:text-blue-500">Manajemen Tiket</a></li>
+                <li><a href="/orders/all" class="hover:text-blue-500">Semua Order</a></li>
+                <li><a href="/assets/tickets" class="hover:text-blue-500">Tiket </a></li>
+                <li><a href="/assets/orders" class="hover:text-blue-500">Order </a></li>
+                <li><a href="/profile" class="hover:text-blue-500">Profile</a></li>
 
             {% elif request.session.role == 'ORGANIZER' %}
                 <li><a href="/dashboard" class="hover:text-blue-500">Dashboard</a></li>
-                <li><a href="/events/my" class="hover:text-blue-500">My Events</a></li>
-                <li class="bg-green-100 text-green-600 px-2 py-1 rounded text-xs">ORGANIZER</li>
+                <li><a href="/events/my" class="hover:text-blue-500">Event Saya</a></li>
+                <li><a href="/venue/manage" class="hover:text-blue-500">Manajemen Venue</a></li>
+                <li><a href="/seats/manage" class="hover:text-blue-500">Manajemen Kursi</a></li>
+                <li><a href="/ticket-category" class="hover:text-blue-500">Kategori Tiket</a></li>
+                <li><a href="/tickets/manage" class="hover:text-blue-500">Manajemen Tiket</a></li>
+                <li><a href="/orders/all" class="hover:text-blue-500">Semua Order</a></li>
+                <li><a href="/assets/tickets" class="hover:text-blue-500">Tiket</a></li>
+                <li><a href="/assets/orders" class="hover:text-blue-500">Order</a></li>
+                <li><a href="/profile" class="hover:text-blue-500">Profile</a></li>
 
             {% elif request.session.role == 'CUSTOMER' %}
-                <li><a href="/events/search" class="hover:text-blue-500">Find Events</a></li>
-                <li><a href="/orders/my" class="hover:text-blue-500">My Orders</a></li>
-                <li class="bg-blue-100 text-blue-600 px-2 py-1 rounded text-xs">CUSTOMER</li>
+                <li><a href="/dashboard" class="hover:text-blue-500">Dashboard</a></li>
+                <li><a href="/tickets/my" class="hover:text-blue-500">Tiket Saya</a></li>
+                <li><a href="/orders/my" class="hover:text-blue-500">Pesanan</a></li>
+                <li><a href="/events/search" class="hover:text-blue-500">Cari Event</a></li>
+                <li><a href="/promotions" class="hover:text-blue-500">Promosi</a></li>
+                <li><a href="/venues" class="hover:text-blue-500">Venue</a></li>
+                <li><a href="/artists" class="hover:text-blue-500">Artis</a></li>
+                <li><a href="{% url 'logout' %}" class="text-gray-400 hover:text-red-500">Logout</a></li>
 
             {% else %}
                 <li><a href="{% url 'login' %}" class="hover:text-blue-500">Login</a></li>
-                <li><a href="/register" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">Register</a></li>
+                <li><a href="/register" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">Registrasi</a></li>
             {% endif %}
 
-            {% if request.session.role %}
-                <li><a href="/profile" class="hover:text-blue-500">Profile</a></li>
-                <li><a href="{% url 'logout' %}" class="text-gray-400 hover:text-red-500">Logout</a></li>
-            {% endif %}
         </ul>
     </div>
 </nav>
