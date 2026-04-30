@@ -1,0 +1,148 @@
+{% extends 'order/layout.html' %}
+
+{% block content %}
+<div class="py-2">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-0">Daftar Promosi</h4>
+            <p class="text-muted small mb-0">Kelola kupon diskon untuk customer</p>
+        </div>
+        <!-- Tombol Tambah (Gambar 16.1) -->
+        <button class="btn btn-primary rounded-pill px-4 fw-bold" data-bs-toggle="modal" data-bs-target="#createPromoModal">
+            + Buat Promo
+        </button>
+    </div>
+
+    <div class="card overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="bg-light small fw-bold text-muted">
+                    <tr>
+                        <th class="ps-4 py-3">KODE PROMO</th>
+                        <th>TIPE</th>
+                        <th>NILAI</th>
+                        <th>PERIODE</th>
+                        <th class="text-center">AKSI</th>
+                    </tr>
+                </thead>
+                <!-- ID promoTableBody biar bisa di-append data baru via JS -->
+                <tbody class="small" id="promoTableBody">
+                    {% for p in promotions %}
+                    <tr id="promo-row-{{ p.id }}">
+                        <td class="ps-4 fw-bold text-primary">{{ p.code }}</td>
+                        <td>{{ p.type }}</td>
+                        <td class="fw-bold">
+                            {% if 'Persentase' in p.type %}{{ p.value }}%{% else %}Rp {{ p.value }}{% endif %}
+                        </td>
+                        <td class="text-muted">{{ p.start }} s/d {{ p.end }}</td>
+                        <td class="text-center">
+                            <button class="btn btn-sm btn-outline-secondary border-0">📝</button>
+                            <button class="btn btn-sm btn-outline-danger border-0" onclick="deletePromo('{{ p.id }}')">🗑️</button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL CREATE PROMO (Gambar 16.1)[cite: 2] -->
+<div class="modal fade" id="createPromoModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow p-3">
+            <div class="modal-header border-0">
+                <h5 class="fw-bold">Buat Promo Baru</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="fw-bold small mb-1">KODE PROMO</label>
+                    <input type="text" id="newPromoCode" class="form-control" placeholder="CTH. TIKTAK20">
+                </div>
+                <div class="mb-3">
+                    <label class="fw-bold small mb-1">TIPE DISKON</label>
+                    <select id="newPromoType" class="form-select">
+                        <option value="Persentase (%)">Persentase (%)</option>
+                        <option value="Nominal (Rp)">Nominal (Rp)</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="fw-bold small mb-1">NILAI DISKON</label>
+                    <input type="number" id="newPromoValue" class="form-control" placeholder="cth. 20">
+                </div>
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <label class="fw-bold small mb-1">TANGGAL MULAI</label>
+                        <input type="date" id="newPromoStart" class="form-control">
+                    </div>
+                    <div class="col-6">
+                        <label class="fw-bold small mb-1">TANGGAL BERAKHIR</label>
+                        <input type="date" id="newPromoEnd" class="form-control">
+                    </div>
+                </div>
+                <div class="mb-1">
+                    <label class="fw-bold small mb-1">BATAS PENGGUNAAN</label>
+                    <input type="number" id="newPromoLimit" class="form-control" value="1">
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Batal</button>
+                <!-- Klik tombol ini buat trigger JS[cite: 2] -->
+                <button onclick="addPromo()" class="btn btn-primary rounded-pill px-4">Buat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // JS buat nambahin baris baru secara visual (Responsif)[cite: 2]
+    function addPromo() {
+        const code = document.getElementById('newPromoCode').value;
+        const type = document.getElementById('newPromoType').value;
+        const value = document.getElementById('newPromoValue').value;
+        const start = document.getElementById('newPromoStart').value;
+        const end = document.getElementById('newPromoEnd').value;
+        
+        if (!code || !value) {
+            alert("Isi data dulu jir!");
+            return;
+        }
+
+        const tableBody = document.getElementById('promoTableBody');
+        const newRowId = Date.now(); // Pake timestamp buat ID unik sementara
+
+        const newRow = `
+            <tr id="promo-row-${newRowId}" style="background-color: #e7f1ff; transition: 0.5s;">
+                <td class="ps-4 fw-bold text-primary">${code}</td>
+                <td>${type}</td>
+                <td class="fw-bold">${type.includes('%') ? value + '%' : 'Rp ' + value}</td>
+                <td class="text-muted">${start} s/d ${end}</td>
+                <td class="text-center">
+                    <button class="btn btn-sm btn-outline-secondary border-0">📝</button>
+                    <button class="btn btn-sm btn-outline-danger border-0" onclick="deletePromo('${newRowId}')">🗑️</button>
+                </td>
+            </tr>
+        `;
+
+        // Masukin ke baris paling atas tabel[cite: 2]
+        tableBody.insertAdjacentHTML('afterbegin', newRow);
+
+        // Tutup modal[cite: 2]
+        const modalEl = document.getElementById('createPromoModal');
+        bootstrap.Modal.getInstance(modalEl).hide();
+
+        // Reset form
+        document.getElementById('newPromoCode').value = '';
+        document.getElementById('newPromoValue').value = '';
+    }
+
+    function deletePromo(id) {
+        const row = document.getElementById(`promo-row-${id}`);
+        if (row) {
+            row.style.opacity = "0";
+            setTimeout(() => row.remove(), 300);
+        }
+    }
+</script>
+{% endblock %}

@@ -1,0 +1,138 @@
+{% extends 'order/layout.html' %}
+
+{% block content %}
+<div class="py-2">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h4 class="fw-bold mb-0">Manajemen Promosi</h4>
+            <p class="text-muted small">Kelola kode promo dan kampanye diskon[cite: 2]</p>
+        </div>
+        <!-- Tombol Create hanya untuk Admin (Skenario 17.a)[cite: 2] -->
+        {% if role == 'ADMIN' %}
+        <button class="btn btn-primary rounded-pill px-4 fw-bold" data-bs-toggle="modal" data-bs-target="#createPromoModal">
+            + Buat Promo
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Statistik Dashboard (Sesuai Gambar 17.1)[cite: 2] -->
+    <div class="row mb-4 g-3">
+        <div class="col-md-4">
+            <div class="card p-4 border-0 shadow-sm">
+                <small class="text-muted fw-bold text-uppercase" style="font-size: 0.7rem;">Total Promo</small>
+                <h2 class="fw-bold mb-0 mt-2">{{ stats.total_promo }}</h2>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-4 border-0 shadow-sm">
+                <small class="text-muted fw-bold text-uppercase" style="font-size: 0.7rem;">Total Penggunaan</small>
+                <h2 class="fw-bold mb-0 mt-2">{{ stats.total_usage }}</h2>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-4 border-0 shadow-sm">
+                <small class="text-muted fw-bold text-uppercase" style="font-size: 0.7rem;">Tipe Persentase</small>
+                <h2 class="fw-bold mb-0 mt-2">{{ stats.total_percentage }}</h2>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filter Minimalis[cite: 2] -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="input-group bg-white rounded-pill px-3 shadow-sm border">
+                <span class="input-group-text bg-transparent border-0">🔍</span>
+                <input type="text" class="form-control border-0 bg-transparent" placeholder="Cari kode promo...">
+            </div>
+        </div>
+        <div class="col-md-2">
+            <select class="form-select rounded-pill shadow-sm border fw-bold">
+                <option>Semua Tipe</option>
+                <option>Persentase</option>
+                <option>Nominal</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Tabel R-Promotion[cite: 2] -->
+    <div class="card border-0 shadow-sm overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="bg-light">
+                    <tr class="text-muted small fw-bold">
+                        <th class="ps-4 py-3">KODE PROMO</th>
+                        <th>TIPE</th>
+                        <th>NILAI DISKON</th>
+                        <th>MULAI</th>
+                        <th>BERAKHIR</th>
+                        <th>PENGGUNAAN</th>
+                        {% if role == 'ADMIN' %}<th class="text-center">AKSI</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody class="small" id="promoTableBody">
+                    {% for p in promotions %}
+                    <tr id="promo-row-{{ p.id }}">
+                        <td class="ps-4">
+                            <span class="badge bg-primary-subtle text-primary p-2 me-2">🎫</span>
+                            <span class="fw-bold">{{ p.code }}</span>
+                        </td>
+                        <td>
+                            <span class="badge {% if p.type == 'PERSENTASE' %}bg-purple-subtle text-purple{% else %}bg-orange-subtle text-orange{% endif %}">
+                                {{ p.type }}
+                            </span>
+                        </td>
+                        <td class="fw-bold text-dark">{{ p.value }}</td>
+                        <td class="text-muted">{{ p.start }}</td>
+                        <td class="text-muted">{{ p.end }}</td>
+                        <td>
+                            <div class="fw-bold">{{ p.used }} / {{ p.limit }}</div>
+                            <div class="progress mt-1" style="height: 4px; width: 80px;">
+                                <div class="progress-bar" style="width: 45%;"></div>
+                            </div>
+                        </td>
+                        {% if role == 'ADMIN' %}
+                        <td class="text-center">
+                            <button class="btn btn-sm text-muted border-0" data-bs-toggle="modal" data-bs-target="#editModal">📝</button>
+                            <button class="btn btn-sm text-danger border-0" onclick="deleteRow('{{ p.id }}')">🗑️</button>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Create (Sama dengan Fitur 16 tapi desain selaras)[cite: 2] -->
+<div class="modal fade" id="createPromoModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg p-3">
+            <div class="modal-header border-0"><h5 class="fw-bold">Buat Promo Baru</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <label class="fw-bold small mb-1">KODE PROMO</label>
+                <input type="text" class="form-control mb-3" placeholder="CTH. TIKTAK20">
+                <label class="fw-bold small mb-1">TIPE DISKON</label>
+                <select class="form-select mb-3"><option>Persentase (%)</option><option>Nominal (Rp)</option></select>
+                <button type="button" class="btn btn-primary w-100 rounded-pill fw-bold" data-bs-dismiss="modal">Buat Promo</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .bg-purple-subtle { background-color: #f3e8ff; color: #7e22ce; }
+    .bg-orange-subtle { background-color: #fff7ed; color: #c2410c; }
+    .bg-primary-subtle { background-color: #eff6ff; }
+</style>
+
+<script>
+    function deleteRow(id) {
+        const row = document.getElementById(`promo-row-${id}`);
+        if(row) {
+            row.style.opacity = '0';
+            setTimeout(() => row.remove(), 300);
+        }
+    }
+</script>
+{% endblock %}

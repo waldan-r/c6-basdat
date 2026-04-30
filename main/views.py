@@ -278,3 +278,29 @@ def ticket_category_manage_view(request):
         'role': role 
     }
     return render(request, 'ticket_category_manage.html', context)
+
+def promotion_dashboard_view(request):
+    """Skenario 17: Dashboard R-Promotion untuk semua role"""
+    # Simulasi role: ?role=admin atau role=customer/guest/organizer
+    user_role = request.GET.get('role', 'guest').upper()
+    
+    # Data Hardcoded sesuai Gambar 17.1
+    promotions = [
+        {'id': 1, 'code': 'TIKTAK20', 'type': 'PERSENTASE', 'value': '20%', 'start': '2024-01-01', 'end': '2024-12-31', 'used': 45, 'limit': 100},
+        {'id': 2, 'code': 'HEMAT50K', 'type': 'NOMINAL', 'value': 'Rp 50.000', 'start': '2024-01-01', 'end': '2024-12-31', 'used': 12, 'limit': 50},
+        {'id': 3, 'code': 'NEWUSER30', 'type': 'PERSENTASE', 'value': '30%', 'start': '2024-03-01', 'end': '2024-06-30', 'used': 87, 'limit': 200},
+    ]
+    
+    stats = {
+        'total_promo': 3,
+        'total_usage': '144x',
+        'total_percentage': 2
+    }
+    
+    return render(request, 'order/promotion_dashboard.html', {
+        'role': user_role,
+        'promotions': promotions,
+        'stats': stats,
+        'title': 'Dashboard Promosi'
+    })
+

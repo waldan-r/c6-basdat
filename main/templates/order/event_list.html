@@ -1,0 +1,21 @@
+{% extends 'order/layout.html' %}
+{% block content %}
+<h4 class="fw-bold mb-4">Cari Event 🎵</h4>
+<div class="row">
+    {% for slug, data in events.items %}
+    <div class="col-md-4 mb-4">
+        <div class="card p-3 h-100">
+            <div class="d-flex align-items-center mb-3">
+                <div class="bg-primary text-white p-3 rounded me-3">🎤</div>
+                <div>
+                    <h6 class="fw-bold mb-0">{{ data.title }}</h6>
+                    <small class="text-muted">{{ data.venue }}</small>
+                </div>
+            </div>
+            <p class="small text-muted mb-3">📅 {{ data.date }}</p>
+            <a href="{% url 'order:checkout_order' %}?e={{ slug }}" class="btn btn-primary w-100">Beli Tiket</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

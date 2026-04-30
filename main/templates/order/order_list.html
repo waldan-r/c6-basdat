@@ -1,0 +1,104 @@
+{% extends 'order/layout.html' %}
+{% block content %}
+
+{% if request.GET.msg %}
+    <div class="alert alert-success border-0 shadow-sm mb-4">Aksi berhasil dilakukan![cite: 2]</div>
+{% endif %}
+
+<div class="py-2">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold mb-0">Daftar Order</h4>
+        <div class="badge bg-primary px-3 py-2">Role: {{ role }}</div>
+    </div>
+
+    <!-- Statistik Card[cite: 2] -->
+    <div class="row mb-4 g-3">
+        <div class="col-6 col-md-3"><div class="card p-3 h-100 text-center">
+            <small class="text-muted fw-bold">TOTAL ORDER</small><h4 class="fw-bold mb-0">4</h4>
+        </div></div>
+        <div class="col-6 col-md-3"><div class="card p-3 h-100 text-center">
+            <small class="text-muted fw-bold text-success">LUNAS</small><h4 class="fw-bold mb-0 text-success">2</h4>
+        </div></div>
+        <div class="col-6 col-md-3"><div class="card p-3 h-100 text-center">
+            <small class="text-muted fw-bold text-warning">PENDING</small><h4 class="fw-bold mb-0 text-warning">1</h4>
+        </div></div>
+        <div class="col-6 col-md-3"><div class="card p-3 h-100 text-center">
+            <small class="text-muted fw-bold text-primary">REVENUE</small><h4 class="fw-bold mb-0 text-primary">1.3M</h4>
+        </div></div>
+    </div>
+
+    <!-- Tabel Responsif[cite: 2] -->
+    <div class="card overflow-hidden">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0 align-middle">
+                <thead class="bg-light small fw-bold text-muted">
+                    <tr>
+                        <th class="ps-4 py-3">ORDER ID</th>
+                        <th>TANGGAL</th>
+                        <th>STATUS</th>
+                        <th class="text-end">TOTAL</th>
+                        {% if role == 'ADMIN' %}<th class="text-center">AKSI</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody class="small">
+                    {% for o in orders %}
+                    <tr>
+                        <td class="ps-4 fw-bold">{{ o.id }}</td>
+                        <td>{{ o.tanggal }}</td>
+                        <td><span class="badge bg-light text-dark border">{{ o.status }}</span></td>
+                        <td class="text-end fw-bold">Rp {{ o.total }}</td>
+                        {% if role == 'ADMIN' %}
+                        <td class="text-center">
+                            <!-- Trigger Modal Update[cite: 2] -->
+                            <button type="button" class="btn btn-sm btn-outline-secondary border-0" data-bs-toggle="modal" data-bs-target="#updateModal">📝</button>
+                            <!-- Trigger Modal Delete[cite: 2] -->
+                            <button type="button" class="btn btn-sm btn-outline-danger border-0" data-bs-toggle="modal" data-bs-target="#deleteModal">🗑️</button>
+                        </td>
+                        {% endif %}
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL UPDATE (Gambar 15.1)[cite: 2] -->
+<div class="modal fade" id="updateModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0"><h5 class="fw-bold">Update Status</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <form method="POST" action="{% url 'order:order_update' %}">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <label class="fw-bold small mb-2 text-muted">PAYMENT STATUS</label>
+                    <select class="form-select" name="status">
+                        <option>Lunas</option><option>Pending</option><option>Dibatalkan</option>
+                    </select>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Update</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL DELETE (Gambar 15.2)[cite: 2] -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header border-0"><h5 class="fw-bold text-danger">Hapus Order</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <form method="POST" action="{% url 'order:order_delete' %}">
+                {% csrf_token %}
+                <div class="modal-body text-muted">Apakah Anda yakin ingin menghapus catatan order ini?</div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Batal</button>
+                    <button type="submit" class="btn btn-danger rounded-pill px-4">Hapus</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

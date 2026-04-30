@@ -1,0 +1,51 @@
+{% extends 'order/layout.html' %}
+{% block content %}
+<div class="py-2">
+    <div class="mb-4 small text-muted">
+        <a href="{% url 'order:event_list' %}" class="text-decoration-none">Pilih Event</a> &nbsp; > &nbsp; <b>Checkout</b>
+    </div>
+
+    {% if success %}
+        <div class="alert alert-success border-0 shadow-sm mb-4"><b>Berhasil!</b> Order dicatat otomatis[cite: 1].</div>
+    {% endif %}
+
+    <form method="POST">
+        {% csrf_token %}
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="card p-4 mb-4 d-flex flex-row align-items-center">
+                    <div class="bg-primary text-white rounded p-3 me-3">🎵</div>
+                    <div>
+                        <h5 class="fw-bold mb-1">{{ event.title }}</h5>
+                        <p class="text-muted small mb-0">{{ event.venue }} | {{ event.date }}</p>
+                    </div>
+                </div>
+                
+                <div class="card p-4 mb-4">
+                    <h6 class="fw-bold mb-3">Pilih Kategori[cite: 1]</h6>
+                    {% for cat in event.cats %}
+                    <label class="border rounded p-3 mb-2 d-flex justify-content-between align-items-center w-100" style="cursor:pointer">
+                        <div class="d-flex align-items-center">
+                            <input type="radio" name="cat" required>
+                            <span class="ms-3 fw-bold">{{ cat.name }}</span>
+                        </div>
+                        <div class="text-primary fw-bold">Rp {{ cat.price }}</div>
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="card p-4 sticky-top" style="top: 100px;">
+                    <h6 class="fw-bold mb-4">Ringkasan Pesanan[cite: 1]</h6>
+                    <div class="d-flex justify-content-between mb-4">
+                        <span class="fw-bold">Total</span>
+                        <span class="fw-bold text-primary fs-5">Rp -</span>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 py-2">Bayar Sekarang</button>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>
+{% endblock %}
