@@ -1,0 +1,120 @@
+{% extends 'base.html' %}
+
+{% block title %}Daftar Akun{% endblock %}
+
+{% block content %}
+<div class="flex flex-col items-center justify-center min-h-[80vh] py-10">
+    <div class="w-full max-w-lg bg-white rounded-xl shadow-lg p-8 border border-gray-100">
+        <h2 class="text-3xl font-extrabold text-center text-gray-800 mb-6">Buat Akun Baru</h2>
+
+        {% if messages %}
+            {% for message in messages %}
+                <div class="mb-4 p-3 {% if message.tags == 'error' %}bg-red-50 text-red-700 border-red-500{% else %}bg-green-50 text-green-700 border-green-500{% endif %} border-l-4 rounded flex justify-between items-center">
+                    <span>{{ message }}</span>
+                    <button onclick="this.parentElement.remove()" class="font-bold">&times;</button>
+                </div>
+            {% endfor %}
+        {% endif %}
+
+        <form method="POST" action="{% url 'register' %}" class="space-y-4">
+            {% csrf_token %}
+            
+            <!-- pilih role -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-600 mb-1">Daftar Sebagai</label>
+                <select name="role" id="roleSelect" required
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none transition-all">
+                    <option value="customer">Pelanggan (Customer)</option>
+                    <option value="organizer">Penyelenggara (Organizer)</option>
+                    <option value="admin">Administrator</option>
+                </select>
+            </div>
+
+            <!-- field dinamik -->
+            <div id="extraFields" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1">Nama Lengkap</label>
+                    <input type="text" name="full_name" placeholder="Nama lengkap Anda"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div id="emailField">
+                    <label class="block text-sm font-semibold text-gray-600 mb-1">Email</label>
+                    <input type="email" name="email" placeholder="contoh@mail.com"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1">Nomor Telepon</label>
+                    <input type="text" name="phone_number" placeholder="0812..."
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+            </div>
+
+            <!-- field yg sama di organizer, admin, customer -->
+            <div>
+                <label class="block text-sm font-semibold text-gray-600 mb-1">Username</label>
+                <input type="text" name="username" required placeholder="Pilih username"
+                    class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1">Password</label>
+                    <input type="password" name="password" required placeholder="Min. 6 karakter"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-semibold text-gray-600 mb-1">Konfirmasi</label>
+                    <input type="password" name="confirm_password" required placeholder="Ulangi password"
+                        class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none">
+                </div>
+            </div>
+
+            <!-- syarat ketentuan -->
+            <div id="tcSection" class="flex items-center space-x-3 pt-2">
+                <input type="checkbox" id="terms" required
+                    class="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500">
+                <label for="terms" class="text-sm text-gray-600 cursor-pointer">
+                    Saya setuju dengan <span class="text-blue-600 underline">syarat dan ketentuan</span>.
+                </label>
+            </div>
+
+            <button type="submit" id="regBtn"
+                class="w-full bg-blue-600 text-white font-bold py-3 rounded-lg hover:bg-blue-700 transform hover:scale-[1.02] transition-all active:scale-95 mt-4">
+                Daftar
+            </button>
+        </form>
+
+        <p class="text-center text-gray-500 mt-6 text-sm">
+            Sudah punya akun? <a href="{% url 'login' %}" class="text-blue-600 font-semibold hover:underline">Masuk di sini</a>
+        </p>
+    </div>
+</div>
+
+<script>
+    const roleSelect = document.getElementById('roleSelect');
+    const extraFields = document.getElementById('extraFields');
+    const tcSection = document.getElementById('tcSection');
+    const termsCheckbox = document.getElementById('terms');
+
+    roleSelect.addEventListener('change', () => {
+        if (roleSelect.value === 'admin') {
+            extraFields.classList.add('hidden');
+            tcSection.classList.add('hidden');
+            termsCheckbox.removeAttribute('required');
+        } else {
+            extraFields.classList.remove('hidden');
+            tcSection.classList.remove('hidden');
+            termsCheckbox.setAttribute('required', '');
+        }
+    });
+
+    // loading effect tombol submit
+    const form = document.querySelector('form');
+    const btn = document.getElementById('regBtn');
+    
+    form.addEventListener('submit', () => {
+        btn.innerHTML = '<span class="animate-pulse">Memproses...</span>';
+        btn.classList.add('opacity-80', 'cursor-not-allowed');
+    });
+</script>
+{% endblock %}
