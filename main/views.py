@@ -4,7 +4,7 @@ import uuid
 # Create your views here.
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from .models import HasRelationship, Orders, Ticket, UserAccount, AccountRole, Customer, Organizer, Role, Artist, TicketCategory, Event
+from .models import HasRelationship, Orders, Seat, Ticket, UserAccount, AccountRole, Customer, Organizer, Role, Artist, TicketCategory, Event
 
 def login_view(request):
     # login
@@ -300,3 +300,6 @@ def ticket_view(request):
         return render(request, 'my_tickets.html', context)
     else:
         return render(request, 'ticket_manage.html', context)
+    
+def seats_view(request):
+    return render(request, 'seats.html', {'seats': Seat.objects.all()})

@@ -1,0 +1,309 @@
+{% extends 'base.html' %}
+
+{% block title %}Manajemen Kursi{% endblock %}
+
+{% block content %}
+
+<div class="max-w-6xl mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900 mb-1">Manajemen Kursi</h1>
+            </div>
+            <button id="openModal" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm">
+                Tambah Kursi
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Total Kursi</p>
+                <p class="text-3xl font-bold text-slate-900">30</p>
+            </div>
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Tersedia</p>
+                <p class="text-3xl font-bold text-slate-900">21</p>
+            </div>
+            <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+                <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Terisi</p>
+                <p class="text-3xl font-bold text-slate-900">9</p>
+            </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row gap-4 mb-8">
+            <div class="relative flex-1">
+                <input type="text" placeholder="Cari" 
+                       class="w-full pl-7 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm">
+            </div>
+            <select class="px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm md:w-48">
+                <option>Semua</option>
+                <option>PLACEHOLDER</option>
+                <option>PLACEHOLDER</option>
+                <option>PLACEHOLDER</option>
+            </select>
+        </div>
+
+        <div class="bg-white rounded-2xl border border-slate-200 overflow-hidden shadow-sm mb-8">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse whitespace-nowrap">
+                    <thead>
+                        <!-- Penambahan class w-[%] untuk mendistribusikan lebar kolom secara merata -->
+                        <tr class="border-b border-slate-100 bg-slate-50/50">
+                            <th class="w-[15%] py-4 px-6 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Section</th>
+                            <th class="w-[15%] py-4 px-6 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Baris</th>
+                            <th class="w-[15%] py-4 px-6 text-[11px] font-bold text-slate-400 uppercase tracking-wider">No. Kursi</th>
+                            <th class="w-[25%] py-4 px-6 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Venue</th>
+                            <th class="w-[15%] py-4 px-6 text-[11px] font-bold text-slate-400 uppercase tracking-wider">Status</th>
+                            <th class="w-[15%] py-4 px-6"></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        {% for seat in seats %}
+                        <tr class="hover:bg-slate-50 transition-colors group">
+                            <td class="py-4 px-6 align-middle">
+                                <div class="flex items-center gap-3">
+                                    <span class="font-bold text-slate-900">{{ seat.section }}</span>
+                                </div>
+                            </td>
+                            
+                            <td class="py-4 px-6 align-middle text-slate-700 font-semibold">
+                                {{ seat.row_number }}
+                            </td>
+                            
+                            <td class="py-4 px-6 align-middle text-slate-700 font-semibold">
+                                {{ seat.seat_number }}
+                            </td>
+                            
+                            <td class="py-4 px-6 align-middle">
+                                <div class="flex items-center gap-2 text-slate-500 font-medium">
+                                    <span class="text-sm">{{ seat.venue.venue_name }}</span>
+                                </div>  
+                            </td>
+                            
+                            <td class="py-4 px-6 align-middle">
+                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-green-50 text-green-600 text-[11px] font-bold tracking-wider uppercase">
+                                    Tersedia
+                                </span>
+                            </td>
+                            
+                            <td class="py-4 px-6 align-middle">
+                                <div class="flex items-center justify-end gap-2">
+                                    <button class="openUpdateModalBtn bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-5 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+                                        Update
+                                    </button>
+                                    <button class="openDeleteModalBtn bg-white border border-red-200 hover:bg-red-50 text-red-600 px-5 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
+                                        Hapus
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+</div>
+
+<div id="ticketModal" class="fixed inset-0 z-[1200] hidden">
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"></div>
+    
+    <div class="relative flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden transform transition-all">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-900">Tambah Kursi Baru</h3>
+                <button id="closeModalX" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+
+            <form action="#" method="POST" class="p-6 space-y-5">
+                {% csrf_token %}
+                
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Venue</label>
+                    <select class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
+                        <option>Pilih Venue</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Section</label>
+                    <input type="text" placeholder="WVIP"
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
+                </div>
+                
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Baris</label>
+                    <input type="text" placeholder="cth. A"
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
+                </div>
+                
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">No. Kursi</label>
+                    <input type="text" placeholder="cth. 1"
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
+                </div>
+        
+                <div class="flex flex-col-reverse sm:flex-row gap-3 pt-4">
+                    <button type="button" id="closeModalBtn" class="flex-1 px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">
+                        Batal
+                    </button>
+                    <button type="submit" class="flex-1 px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 shadow-blue-200 shadow-lg transition-all">
+                        Buat Tiket
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="updateModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"></div>
+    
+    <div class="relative flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden transform transition-all">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-900">Update Kursi</h3>
+                <button id="closeUpdateX" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Menggunakan form yang sama dengan Create Modal -->
+            <form action="#" method="POST" class="p-6 space-y-5">
+                {% csrf_token %}
+                
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Venue</label>
+                    <select class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
+                        <option>Pilih Venue</option>
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Section</label>
+                    <input type="text" placeholder="WVIP"
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
+                </div>
+                
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Baris</label>
+                    <input type="text" placeholder="cth. A"
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
+                </div>
+                
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">No. Kursi</label>
+                    <input type="text" placeholder="cth. 1"
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
+                </div>
+        
+                <div class="flex flex-col-reverse sm:flex-row gap-3 pt-4">
+                    <button type="button" id="closeUpdateBtn" class="flex-1 px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">
+                        Batal
+                    </button>
+                    <button type="submit" class="flex-1 px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 shadow-blue-200 shadow-lg transition-all">
+                        Simpan Perubahan
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div id="deleteModal" class="fixed inset-0 z-50 hidden">
+    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"></div>
+    
+    <div class="relative flex items-center justify-center min-h-screen p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform transition-all">
+            
+            <div class="p-8 text-center">
+                <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-6">
+                    <svg class="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                    </svg>
+                </div>
+
+                <h3 class="text-xl font-bold text-slate-900 mb-2">Hapus Kursi?</h3>
+                    <p class="text-sm text-slate-500 mb-8">
+                        Apakah Anda yakin ingin menghapus kursi ini? Tindakan ini tidak dapat dibatalkan.
+                </p>
+
+                <div class="flex flex-col sm:flex-row gap-3">
+                    <button type="button" id="closeDeleteBtn" class="flex-1 px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">
+                        Batal
+                    </button>
+                    <button type="button" class="flex-1 px-5 py-2.5 rounded-xl bg-red-600 text-white font-semibold text-sm hover:bg-red-700 shadow-red-200 shadow-lg transition-all">
+                        Ya, Hapus
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const modal = document.getElementById('ticketModal');
+    const openBtn = document.getElementById('openModal');
+    const closeBtnX = document.getElementById('closeModalX');
+    const closeBtnBtn = document.getElementById('closeModalBtn');
+
+    const toggleModal = () => {
+        modal.classList.toggle('hidden');
+        document.body.classList.toggle('overflow-hidden');
+    };
+
+    if(openBtn) openBtn.addEventListener('click', toggleModal);
+    if(closeBtnX) closeBtnX.addEventListener('click', toggleModal);
+    if(closeBtnBtn) closeBtnBtn.addEventListener('click', toggleModal);
+
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal.firstElementChild || e.target === modal) {
+            toggleModal();
+        }
+    });
+
+    const uModal = document.getElementById('updateModal');
+    const openUBtns = document.querySelectorAll('.openUpdateModalBtn');
+    const closeUX = document.getElementById('closeUpdateX');
+    const closeUBtn = document.getElementById('closeUpdateBtn');
+
+    const toggleUpdateModal = () => {
+        uModal.classList.toggle('hidden');
+        document.body.classList.toggle('overflow-hidden');
+    };
+
+    openUBtns.forEach(btn => {
+        btn.addEventListener('click', toggleUpdateModal);
+    });
+    if(closeUX) closeUX.addEventListener('click', toggleUpdateModal);
+    if(closeUBtn) closeUBtn.addEventListener('click', toggleUpdateModal);
+
+    window.addEventListener('click', (e) => {
+        if (e.target === uModal) {
+            toggleUpdateModal();
+        }
+    });
+
+    const dModal = document.getElementById('deleteModal');
+    const openDBtns = document.querySelectorAll('.openDeleteModalBtn');
+    const closeDBtn = document.getElementById('closeDeleteBtn');
+
+    const toggleDeleteModal = () => {
+        dModal.classList.toggle('hidden');
+        document.body.classList.toggle('overflow-hidden');
+    };
+
+    openDBtns.forEach(btn => {
+        btn.addEventListener('click', toggleDeleteModal);
+    });
+    if(closeDBtn) closeDBtn.addEventListener('click', toggleDeleteModal);
+
+    window.addEventListener('click', (e) => {
+        if (e.target === dModal) {
+            toggleDeleteModal();
+        }
+    });
+</script>
+{% endblock %}
