@@ -446,36 +446,41 @@ def ticket_view(request):
     role = request.session.get('role', 'GUEST')
     
     with connection.cursor() as cursor:
-        # fetch records
-        cursor.execute("SELECT * FROM ticket")
+        cursor.execute("SELECT * FROM ticket t " \
+        "join ticket_category tc on tc.category_id = t.tcategory_id " \
+        "join event e on e.event_id = tc.event_id " \
+        "join orders o on o.order_id = t.torder_id " \
+        "join customer c on c.customer_id = o.customer_id " \
+        "left join has_relationship hr on hr.ticket_id = t.ticket_id " \
+        "left join seat s on s.seat_id = hr.seat_id")
+
         tickets = dictfetchall(cursor)
+
+        print(cursor.description)
         
-        cursor.execute("SELECT * FROM ticket_category WHERE category_id IN (SELECT tcategory_id FROM ticket)")
-        categories = dictfetchall(cursor)
+        # for ticket in tickets: print(ticket)
+
+        # cursor.execute("SELECT * FROM ticket_category WHERE category_id IN (SELECT tcategory_id FROM ticket) ")
+        # categories = dictfetchall(cursor)
         
-        cursor.execute("SELECT * FROM event WHERE event_id IN (SELECT event_id FROM ticket_category)")
-        events = dictfetchall(cursor)
+        # cursor.execute("SELECT * FROM event WHERE event_id IN (SELECT event_id FROM ticket_category)")
+        # events = dictfetchall(cursor)
         
-        cursor.execute("SELECT * FROM orders WHERE order_id IN (SELECT torder_id FROM ticket)")
-        order = dictfetchall(cursor)
+        # cursor.execute("SELECT * FROM orders WHERE order_id IN (SELECT torder_id FROM ticket)")
+        # order = dictfetchall(cursor)
         
-        cursor.execute("SELECT * FROM customer WHERE customer_id IN (SELECT customer_id FROM orders)")
-        pelanggan = dictfetchall(cursor)
+        # cursor.execute("SELECT * FROM customer WHERE customer_id IN (SELECT customer_id FROM orders)")
+        # pelanggan = dictfetchall(cursor)
         
-        cursor.execute("""
-            SELECT hr.ticket_id, s.*
-            FROM has_relationship hr
-            JOIN seat s ON hr.seat_id = s.seat_id
-        """)
-        seats = dictfetchall(cursor)
+        # cursor.execute("""
+        #     SELECT hr.ticket_id, s.*
+        #     FROM has_relationship hr
+        #     JOIN seat s ON hr.seat_id = s.seat_id
+        # """)
+        # seats = dictfetchall(cursor)
 
     context = {
-        'tickets': tickets,
-        'events': events,
-        'categories': categories,
-        'pelanggan': pelanggan,
-        'order': order,
-        'seats': seats
+        'tickets': tickets
     }
     
     if role == 'CUSTOMER':

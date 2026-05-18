@@ -34,7 +34,8 @@
                 <div class="p-6 md:p-8 flex-1">
                     <div class="flex items-start gap-4">
                         <div>
-                            <h2 class="text-lg font-bold text-slate-900">{{ticket.tcategory.event.event_title}}</h2>
+                            <!-- TODO -->
+                            <h2 class="text-lg font-bold text-slate-900">{{ticket.event_title}}</h2>
                             <p class="text-xs text-slate-400 font-mono mt-0.5">{{ticket.ticket_code}}</p>
                         </div>
                     </div>
@@ -42,23 +43,23 @@
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4 mt-8">
                         <div>
                             <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Kategori</p>
-                            <p class="text-sm font-medium text-slate-700">{{ticket.tcategory.category_name}}</p>
+                            <p class="text-sm font-medium text-slate-700">{{ticket.category_name}}</p>
                         </div>
                         <div>
                             <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Harga</p>
-                            <p class="text-sm font-medium text-slate-700">Rp {{ticket.torder.total_amount|floatformat:2}}</p>
+                            <p class="text-sm font-medium text-slate-700">Rp {{ticket.total_amount|floatformat:2}}</p>
                         </div>
                         <div>
                             <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Status</p>
-                            <p class="text-sm font-medium text-slate-700">{{ticket.torder.payment_status}}</p>
+                            <p class="text-sm font-medium text-slate-700">{{ticket.payment_status}}</p>
                         </div>
                         <div>
                             <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Pelanggan</p>
-                            <p class="text-sm font-medium text-slate-700">{{ticket.torder.customer.full_name}}</p>
+                            <p class="text-sm font-medium text-slate-700">{{ticket.full_name}}</p>
                         </div>
                         <div>
                             <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Order</p>
-                            <p class="text-sm font-medium text-slate-700">{{ticket.torder.order_id}}</p>
+                            <p class="text-sm font-medium text-slate-700">{{ticket.order_id}}</p>
                         </div>
                     </div>
                     <div class="flex items-center gap-3 mt-8 pt-6">
