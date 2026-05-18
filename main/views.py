@@ -1,3 +1,4 @@
+from django.http import HttpRequest
 from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.db import connection
@@ -442,51 +443,63 @@ def venues(request):
 
     return render(request, 'venues.html', {'venues': venues_list})
 
-def ticket_view(request):
+def ticket_view(request: HttpRequest):
     role = request.session.get('role', 'GUEST')
+    user_id = request.session.get('user_id', '0')
     
+    if role == 'GUEST': 
+        return redirect("login")
+
     with connection.cursor() as cursor:
-        cursor.execute("SELECT * FROM ticket t " \
-        "join ticket_category tc on tc.category_id = t.tcategory_id " \
-        "join event e on e.event_id = tc.event_id " \
-        "join orders o on o.order_id = t.torder_id " \
-        "join customer c on c.customer_id = o.customer_id " \
-        "left join has_relationship hr on hr.ticket_id = t.ticket_id " \
-        "left join seat s on s.seat_id = hr.seat_id")
+        if request.method == "GET":
+            event_filter = (request.GET.get('event_name') or '').strip()
+            status_filter = (request.GET.get('ticket_status') or '').strip()
 
-        tickets = dictfetchall(cursor)
+            base_query = (
+                "select * from ticket t "
+                "join ticket_category tc on tc.category_id = t.tcategory_id "
+                "join event e on e.event_id = tc.event_id "
+                "join orders o on o.order_id = t.torder_id "
+                "join customer c on c.customer_id = o.customer_id "
+                "left join has_relationship hr on hr.ticket_id = t.ticket_id "
+                "left join seat s on s.seat_id = hr.seat_id"
+            )
 
-        print(cursor.description)
-        
-        # for ticket in tickets: print(ticket)
+            conditions = []
+            params = []
+            
+            if role == 'CUSTOMER':
+                conditions.append("c.customer_id = %s")
+                params.append(user_id)
+            elif role == 'ORGANIZER':
+                conditions.append("e.organizer_id = %s")
+                params.append(user_id)
 
-        # cursor.execute("SELECT * FROM ticket_category WHERE category_id IN (SELECT tcategory_id FROM ticket) ")
-        # categories = dictfetchall(cursor)
-        
-        # cursor.execute("SELECT * FROM event WHERE event_id IN (SELECT event_id FROM ticket_category)")
-        # events = dictfetchall(cursor)
-        
-        # cursor.execute("SELECT * FROM orders WHERE order_id IN (SELECT torder_id FROM ticket)")
-        # order = dictfetchall(cursor)
-        
-        # cursor.execute("SELECT * FROM customer WHERE customer_id IN (SELECT customer_id FROM orders)")
-        # pelanggan = dictfetchall(cursor)
-        
-        # cursor.execute("""
-        #     SELECT hr.ticket_id, s.*
-        #     FROM has_relationship hr
-        #     JOIN seat s ON hr.seat_id = s.seat_id
-        # """)
-        # seats = dictfetchall(cursor)
+            if event_filter:
+                conditions.append("lower(e.event_title) like lower(%s)")
+                params.append(f"%{event_filter}%")
 
-    context = {
-        'tickets': tickets
-    }
-    
-    if role == 'CUSTOMER':
-        return render(request, 'my_tickets.html', context)
-    else:
-        return render(request, 'ticket_manage.html', context)
+            if status_filter:
+                conditions.append("o.payment_status = %s")
+                params.append(status_filter)
+
+            if conditions:
+                base_query += " where " + " and ".join(conditions)
+            
+            cursor.execute(base_query, params)
+            tickets = dictfetchall(cursor)
+
+            cursor.execute("select distinct payment_status from orders")
+            statuses = dictfetchall(cursor)
+
+            context = {
+                'tickets': tickets,
+                'statuses': statuses,
+                'event_filter': event_filter,
+                'status_filter': status_filter,
+                'role': role
+            }
+            return render(request, 'tickets.html', context)
     
 def seats_view(request):
     with connection.cursor() as cursor:

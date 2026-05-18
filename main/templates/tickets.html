@@ -1,31 +1,54 @@
 {% extends 'base.html' %}
 
-{% block title %}Manajemen Tiket{% endblock %}
+{% block title %}Tiket{% endblock %}
 
 {% block content %}
 
 <div class="max-w-6xl mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
-                <h1 class="text-2xl font-bold text-slate-900 mb-1">Manajemen Tiket</h1>
+                <h1 class="text-2xl font-bold text-slate-900 mb-1">
+                    {% if role == 'CUSTOMER' %}Tiket Saya
+                    {% else %}Manajemen tiket
+                    {% endif %}
+                </h1>
             </div>
+            {% if role == 'ADMIN' or role == 'ORGANIZER' %}
             <button id="openModal" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm">
                 Tambah Tiket
             </button>
+            {% endif %}
         </div>
 
-        <div class="flex flex-col md:flex-row gap-4 mb-8">
-            <div class="relative flex-1">
-                <input type="text" placeholder="Cari" 
-                       class="w-full pl-7 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm">
+        <form class="flex flex-col gap-4 mb-8 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 md:flex-row md:items-end" method="get" action="{% url 'tickets' %}">
+            <label class="relative flex-1">
+                <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500">Nama Event</span>
+                <span class="pointer-events-none absolute left-3 top-[36px] text-slate-400">
+                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                        <path fill-rule="evenodd" d="M12.9 14.32a8 8 0 1 1 1.414-1.414l3.387 3.387a1 1 0 0 1-1.414 1.414l-3.387-3.387ZM14 8a6 6 0 1 0-12 0 6 6 0 0 0 12 0Z" clip-rule="evenodd" />
+                    </svg>
+                </span>
+                <input type="text" name="event_name" placeholder="Cari nama event" value="{{ event_filter|default:'' }}"
+                       class="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-4 text-sm text-slate-700 shadow-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </label>
+            <label class="md:w-56">
+                <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500">Status Pembayaran</span>
+                <select name="ticket_status" id="ticket_status" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">Semua</option>
+                    {% for payment in statuses %}
+                    <option value="{{payment.payment_status}}" {% if status_filter == payment.payment_status %}selected{% endif %}>{{payment.payment_status}}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <div class="flex flex-col gap-2 sm:flex-row">
+                <button type="submit" class="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700">
+                    Terapkan Filter
+                </button>
+                <a href="{% url 'tickets' %}" class="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 shadow-sm transition-colors hover:bg-slate-100">
+                    Reset
+                </a>
             </div>
-            <select class="px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm md:w-48">
-                <option>Semua</option>
-                <option>PLACEHOLDER</option>
-                <option>PLACEHOLDER</option>
-                <option>PLACEHOLDER</option>
-            </select>
-        </div>
+        </form>
 
         {% for ticket in tickets %}
         <div class="space-y-6">
@@ -34,7 +57,6 @@
                 <div class="p-6 md:p-8 flex-1">
                     <div class="flex items-start gap-4">
                         <div>
-                            <!-- TODO -->
                             <h2 class="text-lg font-bold text-slate-900">{{ticket.event_title}}</h2>
                             <p class="text-xs text-slate-400 font-mono mt-0.5">{{ticket.ticket_code}}</p>
                         </div>
