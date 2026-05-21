@@ -14,7 +14,7 @@
                 <li><a href="/artists/" class="hover:text-blue-500">Artists</a></li>
                 <li><a href="/artists/manage" class="hover:text-blue-500">Manajemen Artist</a></li>
                 <li><a href="/ticket-category" class="hover:text-blue-500">Kategori Tiket</a></li>
-                <li><a href="/tickets/manage" class="hover:text-blue-500">Manajemen Tiket</a></li>
+                <li><a href="/tickets/" class="hover:text-blue-500">Manajemen Tiket</a></li>
                 <li><a href="/orders/all" class="hover:text-blue-500">Semua Order</a></li>
                 <li><a href="/assets/tickets" class="hover:text-blue-500">Tiket </a></li>
                 <li><a href="/assets/orders" class="hover:text-blue-500">Order </a></li>
@@ -28,7 +28,7 @@
                 <li><a href="{% url 'list_venue' %}" class="hover:text-blue-500">Manajemen Venue</a></li>
                 <li><a href="/seats/manage" class="hover:text-blue-500">Manajemen Kursi</a></li>
                 <li><a href="/ticket-category" class="hover:text-blue-500">Kategori Tiket</a></li>
-                <li><a href="/tickets/manage" class="hover:text-blue-500">Manajemen Tiket</a></li>
+                <li><a href="/tickets/" class="hover:text-blue-500">Manajemen Tiket</a></li>
                 <li><a href="/orders/all" class="hover:text-blue-500">Semua Order</a></li>
                 <li><a href="/assets/tickets" class="hover:text-blue-500">Tiket</a></li>
                 <li><a href="/assets/orders" class="hover:text-blue-500">Order</a></li>
@@ -37,7 +37,7 @@
 
             {% elif request.session.role == 'CUSTOMER' %}
                 <li><a href="/dashboard" class="hover:text-blue-500">Dashboard</a></li>
-                <li><a href="/tickets/my" class="hover:text-blue-500">Tiket Saya</a></li>
+                <li><a href="/tickets/" class="hover:text-blue-500">Tiket Saya</a></li>
                 <li><a href="/orders/my" class="hover:text-blue-500">Pesanan</a></li>
                 <li><a href="{% url 'list_event' %}" class="hover:text-blue-500">Cari Event</a></li>
                 <li><a href="/ticket-category" class="hover:text-blue-500">Kategori Tiket</a></li>
