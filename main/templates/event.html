@@ -37,13 +37,13 @@
                     <select name="venue" class="flex-1 py-3 px-4 bg-gray-100 rounded-xl outline-none">
                         <option value="">Semua Venue</option>
                         {% for v in venues %}
-                        <option value="{{ v.id }}" {% if request.GET.venue == v.id|stringformat:"i" %}selected{% endif %}>{{ v.name }}</option>
+                        <option value="{{ v.id }}" {% if request.GET.venue == v.id|stringformat:"s" %}selected{% endif %}>{{ v.name }}</option>
                         {% endfor %}
                     </select>
                     <select name="artist" class="flex-1 py-3 px-4 bg-gray-100 rounded-xl outline-none">
                         <option value="">Semua Artist</option>
                         {% for a in artists %}
-                        <option value="{{ a.id }}" {% if request.GET.artist == a.id|stringformat:"i" %}selected{% endif %}>{{ a.name }}</option>
+                        <option value="{{ a.id }}" {% if request.GET.artist == a.id|stringformat:"s" %}selected{% endif %}>{{ a.name }}</option>
                         {% endfor %}
                     </select>
                     <button class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold transition duration-200">Cari</button>
@@ -132,18 +132,7 @@
 
 <script>
     // 1. STATE MANAGEMENT (Konsep sama seperti venue.html agar tidak reset saat disubmit)
-    let eventData = [
-        {
-            name: "Harmoni Alam Konser",
-            date: "2026-05-15",
-            time: "19:00",
-            venue: "Stadion Senayan",
-            categories: [
-                {name: "Festival", price: 150000},
-                {name: "VIP", price: 500000}
-            ]
-        }
-    ];
+    let eventData = JSON.parse('{{ events_json|escapejs }}');
 
     const grid = document.getElementById('eventGrid');
 

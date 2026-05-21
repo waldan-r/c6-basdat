@@ -1,5 +1,14 @@
-DROP SCHEMA TK3 CASCADE;
-CREATE SCHEMA TK3;
+/*
+In Neon, databases are stored on branches. By default, a project has one branch and one database.
+You can select the branch and database to use from the drop-down menus above.
+
+Try generating sample data and querying it by running the example statements below, or click
+New Query to clear the editor.
+*/
+DROP SCHEMA IF EXISTS TikTakTuk CASCADE;
+CREATE SCHEMA TikTakTuk;
+
+SET search_path TO TikTakTuk, public;
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 CREATE TABLE user_account (
@@ -84,8 +93,8 @@ CREATE TABLE ticket_category (
     category_name VARCHAR(50) NOT NULL,
     quota INTEGER NOT NULL CHECK (quota > 0),
     price NUMERIC(12,2) NOT NULL CHECK (price >= 0),
-    tevent_id UUID NOT NULL,
-    FOREIGN KEY (tevent_id) REFERENCES event(event_id)
+    event_id UUID NOT NULL,
+    FOREIGN KEY (event_id) REFERENCES event(event_id)
 );
 
 CREATE TABLE orders (
@@ -267,11 +276,11 @@ INSERT INTO event_artist (event_id, artist_id, role) VALUES
 -- ==========================================
 -- 10. TICKET_CATEGORY (14 data)
 -- ==========================================
-INSERT INTO ticket_category (category_id, category_name, quota, price, tevent_id)
+INSERT INTO ticket_category (category_id, category_name, quota, price, event_id)
 SELECT gen_random_uuid(), 'VIP', 100, 5000000, event_id FROM event LIMIT 6;
-INSERT INTO ticket_category (category_id, category_name, quota, price, tevent_id)
+INSERT INTO ticket_category (category_id, category_name, quota, price, event_id)
 SELECT gen_random_uuid(), 'CAT 1', 200, 2500000, event_id FROM event LIMIT 6;
-INSERT INTO ticket_category (category_id, category_name, quota, price, tevent_id)
+INSERT INTO ticket_category (category_id, category_name, quota, price, event_id)
 SELECT gen_random_uuid(), 'Festival', 500, 1500000, event_id FROM event LIMIT 2;
 
 -- ==========================================

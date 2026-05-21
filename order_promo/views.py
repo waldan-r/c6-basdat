@@ -20,6 +20,12 @@ def fetchone(cursor):
     return dict(zip(columns, row))
 
 
+def db_cursor():
+    cursor = connection.cursor()
+    cursor.execute("SET search_path TO tiktaktuk, public")
+    return cursor
+
+
 def is_uuid(value):
     try:
         UUID(str(value))
@@ -37,14 +43,14 @@ def get_customer_id(request):
     if is_uuid(customer_id):
         return customer_id
 
-    with connection.cursor() as cursor:
+    with db_cursor() as cursor:
         cursor.execute("SELECT customer_id FROM customer ORDER BY full_name LIMIT 1")
         row = cursor.fetchone()
     return row[0] if row else None
 
 
 def event_list(request):
-    with connection.cursor() as cursor:
+    with db_cursor() as cursor:
         cursor.execute(
             """
             SELECT e.event_id, e.event_title, e.event_datetime, v.venue_name, v.city
@@ -81,7 +87,7 @@ def checkout(request):
             except ValueError as exc:
                 error = str(exc)
 
-    with connection.cursor() as cursor:
+    with db_cursor() as cursor:
         cursor.execute(
             """
             SELECT e.event_id, e.event_title, e.event_datetime, v.venue_name, v.city
@@ -97,7 +103,7 @@ def checkout(request):
             """
             SELECT category_id, category_name, quota, price
             FROM ticket_category
-            WHERE tevent_id = %s
+            WHERE event_id = %s
             ORDER BY price
             """,
             [event_id],
@@ -125,9 +131,9 @@ def checkout(request):
 
 def create_order(event_id, category_id, customer_id, promo_code):
     with transaction.atomic():
-        with connection.cursor() as cursor:
+        with db_cursor() as cursor:
             cursor.execute(
-                "SELECT price FROM ticket_category WHERE category_id = %s AND tevent_id = %s",
+                "SELECT price FROM ticket_category WHERE category_id = %s AND event_id = %s",
                 [category_id, event_id],
             )
             category = fetchone(cursor)
@@ -194,7 +200,7 @@ def create_order(event_id, category_id, customer_id, promo_code):
 def order_list(request):
     role = request.GET.get("role", "customer").upper()
 
-    with connection.cursor() as cursor:
+    with db_cursor() as cursor:
         cursor.execute(
             """
             SELECT o.order_id, o.order_date, o.payment_status, o.total_amount,
@@ -225,7 +231,7 @@ def order_update(request):
         order_id = request.POST.get("order_id")
         payment_status = request.POST.get("payment_status")
         if is_uuid(order_id) and payment_status in {"PENDING", "PAID", "CANCELLED"}:
-            with connection.cursor() as cursor:
+            with db_cursor() as cursor:
                 cursor.execute(
                     "UPDATE orders SET payment_status = %s WHERE order_id = %s",
                     [payment_status, order_id],
@@ -238,7 +244,7 @@ def order_delete(request):
         order_id = request.POST.get("order_id")
         if is_uuid(order_id):
             with transaction.atomic():
-                with connection.cursor() as cursor:
+                with db_cursor() as cursor:
                     cursor.execute(
                         """
                         DELETE FROM has_relationship
@@ -263,7 +269,7 @@ def promotion_dashboard(request):
 def promotion_context(request, title):
     role = request.GET.get("role", "guest").upper()
 
-    with connection.cursor() as cursor:
+    with db_cursor() as cursor:
         cursor.execute(
             """
             SELECT p.promotion_id, p.promo_code, p.discount_type, p.discount_value,
@@ -298,7 +304,7 @@ def promotion_context(request, title):
 
 def promotion_create(request):
     if request.method == "POST":
-        with connection.cursor() as cursor:
+        with db_cursor() as cursor:
             cursor.execute(
                 """
                 INSERT INTO promotion (
@@ -323,7 +329,7 @@ def promotion_update(request):
     if request.method == "POST":
         promotion_id = request.POST.get("promotion_id")
         if is_uuid(promotion_id):
-            with connection.cursor() as cursor:
+            with db_cursor() as cursor:
                 cursor.execute(
                     """
                     UPDATE promotion
@@ -353,7 +359,7 @@ def promotion_delete(request):
         promotion_id = request.POST.get("promotion_id")
         if is_uuid(promotion_id):
             with transaction.atomic():
-                with connection.cursor() as cursor:
+                with db_cursor() as cursor:
                     cursor.execute("DELETE FROM order_promotion WHERE promotion_id = %s", [promotion_id])
                     cursor.execute("DELETE FROM promotion WHERE promotion_id = %s", [promotion_id])
     return redirect(f"{reverse('order_promo:promotion_list')}?role=admin&msg=deleted")
