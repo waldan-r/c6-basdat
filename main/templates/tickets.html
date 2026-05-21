@@ -5,139 +5,201 @@
 {% block content %}
 
 <div class="max-w-6xl mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-            <div>
-                <h1 class="text-2xl font-bold text-slate-900 mb-1">
-                    {% if role == 'CUSTOMER' %}Tiket Saya
-                    {% else %}Manajemen tiket
-                    {% endif %}
-                </h1>
-            </div>
-            {% if role == 'ADMIN' or role == 'ORGANIZER' %}
-            <button id="openModal" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm">
-                Tambah Tiket
-            </button>
-            {% endif %}
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+            <h1 class="text-2xl font-bold text-slate-900 mb-1">
+                {% if role == 'CUSTOMER' %} Tiket Saya
+                {% else %} Manajemen tiket
+                {% endif %}
+            </h1>
         </div>
-
-        <form class="flex flex-col gap-4 mb-8 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 md:flex-row md:items-end" method="get" action="{% url 'tickets' %}">
-            <label class="relative flex-1">
-                <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500">Nama Event</span>
-                <span class="pointer-events-none absolute left-3 top-[36px] text-slate-400">
-                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-                        <path fill-rule="evenodd" d="M12.9 14.32a8 8 0 1 1 1.414-1.414l3.387 3.387a1 1 0 0 1-1.414 1.414l-3.387-3.387ZM14 8a6 6 0 1 0-12 0 6 6 0 0 0 12 0Z" clip-rule="evenodd" />
-                    </svg>
-                </span>
-                <input type="text" name="event_name" placeholder="Cari nama event" value="{{ event_filter|default:'' }}"
-                       class="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-4 text-sm text-slate-700 shadow-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500">
-            </label>
-            <label class="md:w-56">
-                <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500">Status Pembayaran</span>
-                <select name="ticket_status" id="ticket_status" class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="">Semua</option>
-                    {% for payment in statuses %}
-                    <option value="{{payment.payment_status}}" {% if status_filter == payment.payment_status %}selected{% endif %}>{{payment.payment_status}}</option>
-                    {% endfor %}
-                </select>
-            </label>
-            <div class="flex flex-col gap-2 sm:flex-row">
-                <button type="submit" class="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700">
-                    Terapkan Filter
-                </button>
-                <a href="{% url 'tickets' %}" class="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 shadow-sm transition-colors hover:bg-slate-100">
-                    Reset
-                </a>
-            </div>
-        </form>
-
-        {% for ticket in tickets %}
-        <div class="space-y-6">
-            
-            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row overflow-hidden">
-                <div class="p-6 md:p-8 flex-1">
-                    <div class="flex items-start gap-4">
-                        <div>
-                            <h2 class="text-lg font-bold text-slate-900">{{ticket.event_title}}</h2>
-                            <p class="text-xs text-slate-400 font-mono mt-0.5">{{ticket.ticket_code}}</p>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4 mt-8">
-                        <div>
-                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Kategori</p>
-                            <p class="text-sm font-medium text-slate-700">{{ticket.category_name}}</p>
-                        </div>
-                        <div>
-                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Harga</p>
-                            <p class="text-sm font-medium text-slate-700">Rp {{ticket.total_amount|floatformat:2}}</p>
-                        </div>
-                        <div>
-                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Status</p>
-                            <p class="text-sm font-medium text-slate-700">{{ticket.payment_status}}</p>
-                        </div>
-                        <div>
-                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Pelanggan</p>
-                            <p class="text-sm font-medium text-slate-700">{{ticket.full_name}}</p>
-                        </div>
-                        <div>
-                            <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Order</p>
-                            <p class="text-sm font-medium text-slate-700">{{ticket.order_id}}</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-3 mt-8 pt-6">
-                        <button id="openUpdateModal" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-5 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
-                            Update
-                        </button><button id="openDeleteModal" class="bg-white border border-red-200 hover:bg-red-50 text-red-600 px-5 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
-                            Hapus
-                        </button>
-                    </div>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
+        {% if role == 'ADMIN' or role == 'ORGANIZER' %}
+        <button id="openModal"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm">
+            Tambah Tiket
+        </button>
+        {% endif %}
     </div>
 
-    <div id="ticketModal" class="fixed inset-0 z-1200 hidden">
-    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"></div>
-    
+    <form
+        class="flex flex-col gap-4 mb-8 rounded-2xl border border-slate-200 bg-slate-50/70 p-4 md:flex-row md:items-end"
+        method="get" action="{% url 'tickets' %}">
+        <label class="relative flex-1">
+            <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500">Nama Event</span>
+            <span class="pointer-events-none absolute left-3 top-[36px] text-slate-400">
+                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                    <path fill-rule="evenodd"
+                        d="M12.9 14.32a8 8 0 1 1 1.414-1.414l3.387 3.387a1 1 0 0 1-1.414 1.414l-3.387-3.387ZM14 8a6 6 0 1 0-12 0 6 6 0 0 0 12 0Z"
+                        clip-rule="evenodd" />
+                </svg>
+            </span>
+            <input type="text" name="ticket_filter" placeholder="Cari berdasarkan event atau kode"
+                value="{{ event_filter|default:'' }}"
+                class="w-full rounded-xl border border-slate-200 bg-white py-3 pl-9 pr-4 text-sm text-slate-700 shadow-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500">
+        </label>
+        <label class="md:w-56">
+            <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-500">Status
+                Pembayaran</span>
+            <select name="ticket_status" id="ticket_status"
+                class="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-700 shadow-sm transition-all focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Semua</option>
+                {% for status in statuses %}
+                <option value="{{status}}" {% if status_filter == status %} selected {% endif %}>{{status}}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <div class="flex flex-col gap-2 sm:flex-row">
+            <button type="submit"
+                class="rounded-xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-blue-700">
+                Terapkan Filter
+            </button>
+            <a href="{% url 'tickets' %}"
+                class="rounded-xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-600 shadow-sm transition-colors hover:bg-slate-100">
+                Reset
+            </a>
+        </div>
+    </form>
+
+    <div class="space-y-6">
+        {% for ticket in tickets %}
+        <div class="bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row overflow-hidden">
+            <div class="p-6 md:p-8 flex-1">
+                <div class="flex items-start gap-4">
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-900">{{ticket.event_title}}</h2>
+                        <p class="text-xs text-slate-400 font-mono mt-0.5">{{ticket.ticket_code}}</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-3 gap-y-6 gap-x-4 mt-8">
+                    <div>
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Kategori</p>
+                        <p class="text-sm font-medium text-slate-700">{{ticket.category_name}}</p>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Harga</p>
+                        <p class="text-sm font-medium text-slate-700">Rp {{ticket.price|floatformat:2}}</p>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Status</p>
+                        <p class="text-sm font-medium text-slate-700">{{ticket.payment_status}}</p>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Pelanggan</p>
+                        <p class="text-sm font-medium text-slate-700">{{ticket.full_name}}</p>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Order</p>
+                        <p class="text-sm font-medium text-slate-700">{{ticket.order_id}}</p>
+                    </div>
+                    {% if ticket.seat_id %}
+                    <div>
+                        <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Seat</p>
+                        <p class="text-sm font-medium text-slate-700">{{ticket.section}}
+                            {{ticket.seat_number}}-{{ticket.row_number}}</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if role == "ADMIN" %}
+                <div class="flex items-center gap-3 mt-8 pt-6">
+                    <button
+                        class="openUpdateModalBtn bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-5 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"
+                        data-id="{{ ticket.ticket_id }}" data-status="{{ ticket.payment_status }}"
+                        data-seat="{{ ticket.seat_id|default:'' }}" data-event="{{ ticket.event_id }}">
+                        Update
+                    </button>
+                    <button
+                        class="openDeleteModalBtn bg-white border border-red-200 hover:bg-red-50 text-red-600 px-5 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2"
+                        data-id="{{ ticket.ticket_id }}">
+                        Hapus
+                    </button>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% empty %}
+        <p class="text-center text-slate-500 py-8">Tidak ada tiket ditemukan.</p>
+        {% endfor %}
+    </div>
+</div>
+
+<div id="ticketModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm">
     <div class="relative flex items-center justify-center min-h-screen p-4">
         <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden transform transition-all">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                 <h3 class="text-lg font-bold text-slate-900">Tambah Tiket Baru</h3>
-                <button id="closeModalX" class="text-slate-400 hover:text-slate-600 transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                <button type="button" id="closeModalX" class="text-slate-400 hover:text-slate-600 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
+                    </svg>
                 </button>
             </div>
 
-            <form action="#" method="POST" class="p-6 space-y-5">
+            <form action="{% url 'tickets' %}" method="POST" class="p-6 space-y-5">
                 {% csrf_token %}
-                
+                <input type="hidden" name="action" value="create">
+                <input type="hidden" name="ticket_filter" value="{{ event_filter|default:'' }}">
+                <input type="hidden" name="ticket_status" value="{{ status_filter|default:'' }}">
+
                 <div>
-                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Order</label>
-                    <select class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
-                        <option>Pilih Order</option>
+                    <label
+                        class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Order</label>
+                    <select name="order_id" required
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
+                        <option value="" disabled selected hidden>Pilih Order</option>
+                        {% for order in orders_options %}
+                        <option value="{{ order.order_id }}">{{order.full_name}} - {{ order.order_id }}</option>
+                        {% endfor %}
                     </select>
                 </div>
 
                 <div>
-                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Kategori Tiket</label>
-                    <select class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
-                        <option>VIP</option>
+                    <label
+                        class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Event</label>
+                    <select id="eventSelect" name="event_id" required
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
+                        <option value="" disabled selected hidden>Pilih Event</option>
+                        {% for event in events_options %}
+                        <option value="{{ event.event_id }}">{{ event.event_title }}</option>
+                        {% endfor %}
                     </select>
                 </div>
 
                 <div>
-                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Kursi <span class="normal-case font-normal text-slate-300">(opsional — reserved seating)</span></label>
-                    <select class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
-                        <option>Category</option>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Kategori
+                        Tiket</label>
+                    <select id="categorySelect" name="category_id" required disabled
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm disabled:cursor-not-allowed disabled:opacity-70">
+                        <option value="" disabled selected hidden>Pilih Kategori</option>
+                        {% for cat in categories_options %}
+                        <option value="{{ cat.category_id }}" data-event="{{ cat.event_id }}">{{ cat.category_name }} -
+                            Rp{{ cat.harga }} - {{ cat.terpakai }}/{{ cat.quota }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label
+                        class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Kursi</label>
+                    <select id="seatSelect" name="seat_id" disabled
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-100 text-slate-400 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm disabled:cursor-not-allowed disabled:opacity-70">
+                        <option value="">Tanpa Kursi (Free Seating)</option>
+                        {% for seat in seats_options %}
+                        <option value="{{ seat.seat_id }}" data-event="{{ seat.event_id }}"
+                            data-occupied-by="{{ seat.occupied_by_ticket_id|default:'' }}">{{ seat.section }} - Baris 
+                            {{ seat.row_number }}, No. {{ seat.seat_number }} </option>
+                        {% endfor %}
                     </select>
                 </div>
 
                 <div class="flex flex-col-reverse sm:flex-row gap-3 pt-4">
-                    <button type="button" id="closeModalBtn" class="flex-1 px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">
+                    <button type="button" id="closeModalBtn"
+                        class="flex-1 px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">
                         Batal
                     </button>
-                    <button type="submit" class="flex-1 px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 shadow-blue-200 shadow-lg transition-all">
+                    <button type="submit"
+                        class="flex-1 px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 shadow-blue-200 shadow-lg transition-all">
                         Buat Tiket
                     </button>
                 </div>
@@ -146,58 +208,81 @@
     </div>
 </div>
 
-<div id="updateModal" class="fixed inset-0 z-50 hidden">
-    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"></div>
-    
+<div id="updateModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm">
     <div class="relative flex items-center justify-center min-h-screen p-4">
         <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden transform transition-all">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center">
                 <h3 class="text-lg font-bold text-slate-900">Update Tiket</h3>
-                <button id="closeUpdateX" class="text-slate-400 hover:text-slate-600 transition-colors">
+                <button type="button" id="closeUpdateX" class="text-slate-400 hover:text-slate-600 transition-colors">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                        </path>
                     </svg>
                 </button>
             </div>
 
-            <div class="p-6 space-y-5">
+            <form action="{% url 'tickets' %}" method="POST" class="p-6 space-y-5">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="update">
+                <input type="hidden" name="ticket_id" id="update_ticket_id">
+                <input type="hidden" name="ticket_filter" value="{{ event_filter|default:'' }}">
+                <input type="hidden" name="ticket_status" value="{{ status_filter|default:'' }}">
+
                 <div>
-                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">KURSI (optional — reserved seating)</label>
-                    <select class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm appearance-none cursor-pointer">
-                        <option>Category</option>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">KURSI
+                        (optional — reserved seating)</label>
+                    <select name="seat_id" id="update_seat_id"
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm appearance-none cursor-pointer">
+                        <option value="">Tanpa Kursi (Free Seating)</option>
+                        {% for seat in seats_options %}
+                        <option value="{{ seat.seat_id }}" data-event="{{ seat.event_id }}"
+                            data-occupied-by="{{ seat.occupied_by_ticket_id|default:'' }}">Nomor Kursi: {{ seat.seat_id
+                            }}</option>
+                        {% endfor %}
                     </select>
                 </div>
 
                 <div>
-                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">STATUS PEMBAYARAN</label>
-                    <select class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm appearance-none cursor-pointer">
-                        <option>PAID</option>
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">STATUS
+                        PEMBAYARAN</label>
+                    <select name="payment_status" id="update_payment_status"
+                        class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm appearance-none cursor-pointer">
+                        {% for status in statuses %}
+                        <option value="{{ status }}">{{ status }}</option>
+                        {% endfor %}
                     </select>
                 </div>
 
                 <div class="flex flex-col-reverse sm:flex-row gap-3 pt-4">
-                    <button type="button" id="closeUpdateBtn" class="flex-1 px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">
+                    <button type="button" id="closeUpdateBtn"
+                        class="flex-1 px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">
                         Batal
                     </button>
-                    <button type="button" class="flex-1 px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 shadow-blue-200 shadow-lg transition-all">
+                    <button type="submit"
+                        class="flex-1 px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 shadow-blue-200 shadow-lg transition-all">
                         Simpan Perubahan
                     </button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 </div>
 
-<div id="deleteModal" class="fixed inset-0 z-50 hidden">
-    <div class="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"></div>
-    
+<div id="deleteModal" class="fixed inset-0 z-50 hidden bg-slate-900/50 backdrop-blur-sm">
     <div class="relative flex items-center justify-center min-h-screen p-4">
         <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden transform transition-all">
-            
-            <div class="p-8 text-center">
+            <form action="{% url 'tickets' %}" method="POST" class="p-8 text-center">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete">
+                <input type="hidden" name="ticket_id" id="delete_ticket_id">
+                <input type="hidden" name="ticket_filter" value="{{ event_filter|default:'' }}">
+                <input type="hidden" name="ticket_status" value="{{ status_filter|default:'' }}">
+
                 <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-red-100 mb-6">
                     <svg class="h-8 w-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                        </path>
                     </svg>
                 </div>
 
@@ -207,41 +292,50 @@
                 </p>
 
                 <div class="flex flex-col sm:flex-row gap-3">
-                    <button type="button" id="closeDeleteBtn" class="flex-1 px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">
+                    <button type="button" id="closeDeleteBtn"
+                        class="flex-1 px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">
                         Batal
                     </button>
-                    <button type="button" class="flex-1 px-5 py-2.5 rounded-xl bg-red-600 text-white font-semibold text-sm hover:bg-red-700 shadow-red-200 shadow-lg transition-all">
+                    <button type="submit"
+                        class="flex-1 px-5 py-2.5 rounded-xl bg-red-600 text-white font-semibold text-sm hover:bg-red-700 shadow-red-200 shadow-lg transition-all">
                         Ya, Hapus
                     </button>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 </div>
 
 <script>
+    // --- JavaScript Modal Handling ---
     const modal = document.getElementById('ticketModal');
     const openBtn = document.getElementById('openModal');
     const closeBtnX = document.getElementById('closeModalX');
     const closeBtnBtn = document.getElementById('closeModalBtn');
+    const addForm = modal ? modal.querySelector('form') : null;
 
-    const toggleModal = () => {
-        modal.classList.toggle('hidden');
-        document.body.classList.toggle('overflow-hidden'); // Mencegah scrolling di background
-    };
+    // Reset forms on page load to fix stuck selections on refresh
+    window.addEventListener('DOMContentLoaded', () => {
+        if (addForm) addForm.reset();
 
-    openBtn.addEventListener('click', toggleModal);
-    closeBtnX.addEventListener('click', toggleModal);
-    closeBtnBtn.addEventListener('click', toggleModal);
-
-    modal.addEventListener('click', (e) => {
-        if (e.target === modal.firstElementChild || e.target === modal) {
-            toggleModal();
+        // Ensure dependent dropdowns are disabled initially
+        const eventSelect = document.getElementById('eventSelect');
+        if (eventSelect) {
+            eventSelect.dispatchEvent(new Event('change'));
         }
     });
 
+    const toggleModal = () => {
+        modal.classList.toggle('hidden');
+        document.body.classList.toggle('overflow-hidden');
+    };
+
+    if (openBtn) openBtn.addEventListener('click', toggleModal);
+    closeBtnX.addEventListener('click', toggleModal);
+    closeBtnBtn.addEventListener('click', toggleModal);
+
+    // --- Update Modal Script ---
     const uModal = document.getElementById('updateModal');
-    const openUBtn = document.getElementById('openUpdateModal');
     const closeUX = document.getElementById('closeUpdateX');
     const closeUBtn = document.getElementById('closeUpdateBtn');
 
@@ -250,18 +344,44 @@
         document.body.classList.toggle('overflow-hidden');
     };
 
-    openUBtn.addEventListener('click', toggleUpdateModal);
+    // Deteksi tombol Update yang diklik (menggunakan class karena loop data)
+    document.querySelectorAll('.openUpdateModalBtn').forEach(button => {
+        button.addEventListener('click', (e) => {
+            const ticketId = button.getAttribute('data-id');
+            const currentStatus = button.getAttribute('data-status');
+            const currentSeat = button.getAttribute('data-seat');
+            const eventId = button.getAttribute('data-event');
+
+            // Set data ke input form modal
+            document.getElementById('update_ticket_id').value = ticketId;
+            document.getElementById('update_payment_status').value = currentStatus;
+
+            // Filter seats for update modal
+            const updateSeatSelect = document.getElementById('update_seat_id');
+            Array.from(updateSeatSelect.options).forEach(option => {
+                if (option.value === "") return;
+                const matchesEvent = option.getAttribute('data-event') === eventId;
+                const occupiedBy = option.getAttribute('data-occupied-by');
+
+                // Show if it matches event AND (is not occupied OR is occupied by THIS ticket)
+                if (matchesEvent && (!occupiedBy || occupiedBy === ticketId)) {
+                    option.hidden = false;
+                } else {
+                    option.hidden = true;
+                }
+            });
+
+            updateSeatSelect.value = currentSeat;
+
+            toggleUpdateModal();
+        });
+    });
+
     closeUX.addEventListener('click', toggleUpdateModal);
     closeUBtn.addEventListener('click', toggleUpdateModal);
 
-    window.addEventListener('click', (e) => {
-        if (e.target === uModal) {
-            toggleUpdateModal();
-        }
-    });
-
+    // --- Delete Modal Script ---
     const dModal = document.getElementById('deleteModal');
-    const openDBtn = document.getElementById('openDeleteModal');
     const closeDBtn = document.getElementById('closeDeleteBtn');
 
     const toggleDeleteModal = () => {
@@ -269,13 +389,83 @@
         document.body.classList.toggle('overflow-hidden');
     };
 
-    if(openDBtn) openDBtn.addEventListener('click', toggleDeleteModal);
-    if(closeDBtn) closeDBtn.addEventListener('click', toggleDeleteModal);
-
-    window.addEventListener('click', (e) => {
-        if (e.target === dModal) {
+    document.querySelectorAll('.openDeleteModalBtn').forEach(button => {
+        button.addEventListener('click', () => {
+            const ticketId = button.getAttribute('data-id');
+            document.getElementById('delete_ticket_id').value = ticketId;
             toggleDeleteModal();
-        }
+        });
     });
+
+    closeDBtn.addEventListener('click', toggleDeleteModal);
+
+    // Close modal click outside background
+    window.addEventListener('click', (e) => {
+        if (e.target === modal) toggleModal();
+        if (e.target === uModal) toggleUpdateModal();
+        if (e.target === dModal) toggleDeleteModal();
+    });
+
+    // Dynamic Select Filtering
+    const eventSelect = document.getElementById('eventSelect');
+    const categorySelect = document.getElementById('categorySelect');
+    const seatSelect = document.getElementById('seatSelect');
+
+    if (eventSelect && categorySelect && seatSelect) {
+        eventSelect.addEventListener('change', function () {
+            const selectedEventId = this.value;
+
+            if (selectedEventId) {
+                // Enable and filter categories
+                categorySelect.disabled = false;
+                categorySelect.classList.remove('bg-slate-100', 'text-slate-400');
+                categorySelect.classList.add('bg-slate-50');
+
+                Array.from(categorySelect.options).forEach(option => {
+                    if (option.value === "") return;
+                    option.hidden = option.getAttribute('data-event') !== selectedEventId;
+                });
+                categorySelect.value = "";
+
+                // Filter seats
+                let hasSeats = false;
+                Array.from(seatSelect.options).forEach(option => {
+                    if (option.value === "") return;
+                    const matchesEvent = option.getAttribute('data-event') === selectedEventId;
+                    const isOccupied = option.getAttribute('data-occupied-by') !== "";
+
+                    if (matchesEvent && !isOccupied) {
+                        option.hidden = false;
+                        hasSeats = true;
+                    } else {
+                        option.hidden = true;
+                    }
+                });
+
+                if (hasSeats) {
+                    seatSelect.disabled = false;
+                    seatSelect.classList.remove('bg-slate-100', 'text-slate-400');
+                    seatSelect.classList.add('bg-slate-50');
+                } else {
+                    seatSelect.disabled = true;
+                    seatSelect.classList.add('bg-slate-100', 'text-slate-400');
+                    seatSelect.classList.remove('bg-slate-50');
+                }
+                seatSelect.value = "";
+
+            } else {
+                // Disable if no event selected
+                categorySelect.disabled = true;
+                categorySelect.classList.add('bg-slate-100', 'text-slate-400');
+                categorySelect.classList.remove('bg-slate-50');
+                categorySelect.value = "";
+
+                seatSelect.disabled = true;
+                seatSelect.classList.add('bg-slate-100', 'text-slate-400');
+                seatSelect.classList.remove('bg-slate-50');
+                seatSelect.value = "";
+            }
+        });
+    }
 </script>
 {% endblock %}
