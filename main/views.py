@@ -1,35 +1,59 @@
-from django.shortcuts import render
-import uuid
-
-# Create your views here.
+from django.http import HttpRequest
 from django.shortcuts import render, redirect
 from django.contrib import messages
-from .models import HasRelationship, Orders, Seat, Ticket, UserAccount, AccountRole, Customer, Organizer, Role, Artist, TicketCategory, Event
+from django.db import connection
+from django.urls import reverse
+from urllib.parse import urlencode
+import uuid
+
+# Helper function to convert raw SQL tuples into dictionaries
+def dictfetchall(cursor):
+    "Return all rows from a cursor as a dict"
+    columns = [col[0] for col in cursor.description]
+    return [
+        dict(zip(columns, row))
+        for row in cursor.fetchall()
+    ]
 
 def login_view(request):
-    # login
     if request.method == 'POST':
         username_input = request.POST.get('email')
         password_input = request.POST.get('password')
 
-        try:
-            # validate
-            user = UserAccount.objects.get(username=username_input, password=password_input)
+        with connection.cursor() as cursor:
+            # validasi user
+            cursor.execute("""
+                SELECT user_id, username 
+                FROM user_account 
+                WHERE username = %s AND password = %s
+            """, [username_input, password_input])
             
-            # retrieve role
-            account_role = AccountRole.objects.filter(user=user).first()
-            role_name = account_role.role.role_name if account_role else 'GUEST'
+            user = cursor.fetchone()
+            
+            if user:
+                user_id = str(user[0])
+                username = user[1]
+                
+                # retrieve role
+                cursor.execute("""
+                    SELECT r.role_name 
+                    FROM account_role ar
+                    JOIN role r ON ar.role_id = r.role_id
+                    WHERE ar.user_id = %s
+                """, [user_id])
+                
+                role_row = cursor.fetchone()
+                role_name = role_row[0] if role_row else 'GUEST'
 
-            # save session
-            request.session['user_id'] = str(user.user_id)
-            request.session['username'] = user.username
-            request.session['role'] = role_name
-            
-            return redirect('dashboard')
-            
-        except UserAccount.DoesNotExist:
-            messages.error(request, "Email atau Password salah!")
-            return redirect('login')
+                # save session
+                request.session['user_id'] = user_id
+                request.session['username'] = username
+                request.session['role'] = role_name
+                
+                return redirect('dashboard')
+            else:
+                messages.error(request, "Email atau Password salah!")
+                return redirect('login')
 
     return render(request, 'login.html')
 
@@ -44,7 +68,7 @@ def register_view(request):
         password = request.POST.get('password')
         confirm_password = request.POST.get('confirm_password')
         
-        # validasi Dasar
+        # basic validatin
         if password != confirm_password:
             messages.error(request, "Konfirmasi password tidak cocok!")
             return redirect('register')
@@ -53,54 +77,69 @@ def register_view(request):
             messages.error(request, "Password minimal 6 karakter!")
             return redirect('register')
 
-        if UserAccount.objects.filter(username=username).exists():
-            messages.error(request, "Username sudah terdaftar!")
-            return redirect('register')
+        with connection.cursor() as cursor:
+            # check if username exists
+            cursor.execute("SELECT 1 FROM user_account WHERE username = %s", [username])
+            if cursor.fetchone():
+                messages.error(request, "Username sudah terdaftar!")
+                return redirect('register')
 
-        try:
-            # buat user_account
-            user_id = str(uuid.uuid4())
-            user = UserAccount.objects.create(
-                user_id=user_id,
-                username=username,
-                password=password
-            )
+            # if username doesnt exist yet
+            try:
+                # create user_account
+                user_id = str(uuid.uuid4())
+                cursor.execute("""
+                    INSERT INTO user_account (user_id, username, password) 
+                    VALUES (%s, %s, %s)
+                """, [user_id, username, password])
 
-            # tentukan Role ID berdasarkan pilihan
-            role_map = {
-                'admin': '38aaec88-4c72-435d-b1a6-f761d6f0075c',
-                'customer': 'a5352506-2c32-4126-aa16-26b82baec8eb',
-                'organizer': '7d4dbc8d-c9c3-49d9-9403-b463a456ef50'
-            }
-            
-            selected_role_id = role_map.get(role_choice)
-            role_obj = Role.objects.get(role_id=selected_role_id)
-            
-            # simpan ke AccountRole
-            AccountRole.objects.create(role=role_obj, user=user)
+                # role string -> DB role name
+                role_map = {
+                    'admin': 'ADMIN',
+                    'customer': 'CUSTOMER',
+                    'organizer': 'ORGANIZER'
+                }
+                target_role = role_map.get(role_choice)
+                
+                # fetch dynamic role_id dari DB
+                cursor.execute("SELECT role_id FROM role WHERE role_name = %s", [target_role])
+                role_row = cursor.fetchone()
+                
+                if role_row:
+                    role_id = str(role_row[0])
+                    # Simpan ke account_role
+                    cursor.execute("""
+                        INSERT INTO account_role (role_id, user_id) 
+                        VALUES (%s, %s)
+                    """, [role_id, user_id])
 
-            # simpan ke tabel customer/organizer
-            if role_choice == 'customer':
-                Customer.objects.create(
-                    customer_id=str(uuid.uuid4()),
-                    full_name=request.POST.get('full_name'),
-                    phone_number=request.POST.get('phone_number'),
-                    user=user
-                )
-            elif role_choice == 'organizer':
-                Organizer.objects.create(
-                    organizer_id=str(uuid.uuid4()),
-                    organizer_name=request.POST.get('full_name'),
-                    contact_email=request.POST.get('email'),
-                    user=user
-                )
+                # Simpan ke tabel customer / organizer
+                if role_choice == 'customer':
+                    customer_id = str(uuid.uuid4())
+                    full_name = request.POST.get('full_name')
+                    phone_number = request.POST.get('phone_number')
+                    
+                    cursor.execute("""
+                        INSERT INTO customer (customer_id, full_name, phone_number, user_id) 
+                        VALUES (%s, %s, %s, %s)
+                    """, [customer_id, full_name, phone_number, user_id])
+                    
+                elif role_choice == 'organizer':
+                    organizer_id = str(uuid.uuid4())
+                    full_name = request.POST.get('full_name')
+                    email = request.POST.get('email')
+                    
+                    cursor.execute("""
+                        INSERT INTO organizer (organizer_id, organizer_name, contact_email, user_id) 
+                        VALUES (%s, %s, %s, %s)
+                    """, [organizer_id, full_name, email, user_id])
 
-            messages.success(request, "Registrasi berhasil! Silakan login.")
-            return redirect('login')
+                messages.success(request, "Registrasi berhasil! Silakan login.")
+                return redirect('login')
 
-        except Exception as e:
-            messages.error(request, f"Terjadi kesalahan: {str(e)}")
-            return redirect('register')
+            except Exception as e:
+                messages.error(request, f"Terjadi kesalahan: {str(e)}")
+                return redirect('register')
 
     return render(request, 'register.html')
 
@@ -115,8 +154,10 @@ def dashboard_view(request):
     return render(request, 'dashboard.html', context)
 
 def artist_list_view(request):
-    # akses untuk semua orang
-    artists = Artist.objects.all()
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM artist")
+        artists = dictfetchall(cursor)
+        
     context = {
         'artists': artists,
         'role': request.session.get('role', 'GUEST')
@@ -124,56 +165,60 @@ def artist_list_view(request):
     return render(request, 'artists.html', context)
 
 def artist_manage_view(request):
-
     if request.method == 'POST':
         action = request.POST.get('action')
 
-        # CREATE ARTIST
-        if action == 'create':
-            name = request.POST.get('name')
-            genre = request.POST.get('genre', '')
-            
-            if not name:
-                messages.error(request, "Name wajib diisi!")
-            else:
-                Artist.objects.create(
-                    artist_id=str(uuid.uuid4()),
-                    name=name,
-                    genre=genre
-                )
-                messages.success(request, "Artist baru berhasil ditambahkan!")
+        with connection.cursor() as cursor:
+            # CREATE ARTIST
+            if action == 'create':
+                name = request.POST.get('name')
+                genre = request.POST.get('genre', '')
+                
+                if not name:
+                    messages.error(request, "Name wajib diisi!")
+                else:
+                    cursor.execute("""
+                        INSERT INTO artist (artist_id, name, genre) 
+                        VALUES (%s, %s, %s)
+                    """, [str(uuid.uuid4()), name, genre])
+                    messages.success(request, "Artist baru berhasil ditambahkan!")
 
-        # UPDATE ARTIST
-        elif action == 'update':
-            artist_id = request.POST.get('artist_id')
-            name = request.POST.get('name')
-            genre = request.POST.get('genre', '')
+            # UPDATE ARTIST
+            elif action == 'update':
+                artist_id = request.POST.get('artist_id')
+                name = request.POST.get('name')
+                genre = request.POST.get('genre', '')
 
-            if not name:
-                messages.error(request, "Name wajib diisi!")
-            else:
-                try:
-                    artist = Artist.objects.get(artist_id=artist_id)
-                    artist.name = name
-                    artist.genre = genre
-                    artist.save()
-                    messages.success(request, "Data artist berhasil diperbarui!")
-                except Artist.DoesNotExist:
+                if not name:
+                    messages.error(request, "Name wajib diisi!")
+                else:
+                    cursor.execute("""
+                        UPDATE artist 
+                        SET name = %s, genre = %s 
+                        WHERE artist_id = %s
+                    """, [name, genre, artist_id])
+                    
+                    if cursor.rowcount > 0:
+                        messages.success(request, "Data artist berhasil diperbarui!")
+                    else:
+                        messages.error(request, "Data artist tidak ditemukan!")
+
+            # DELETE ARTIST
+            elif action == 'delete':
+                artist_id = request.POST.get('artist_id')
+                cursor.execute("DELETE FROM artist WHERE artist_id = %s", [artist_id])
+                
+                if cursor.rowcount > 0:
+                    messages.success(request, "Artist berhasil dihapus!")
+                else:
                     messages.error(request, "Data artist tidak ditemukan!")
-
-        # DELETE ARTIST
-        elif action == 'delete':
-            artist_id = request.POST.get('artist_id')
-            try:
-                artist = Artist.objects.get(artist_id=artist_id)
-                artist.delete()
-                messages.success(request, "Artist berhasil dihapus!")
-            except Artist.DoesNotExist:
-                messages.error(request, "Data artist tidak ditemukan!")
 
         return redirect('artist_manage')
 
-    artists = Artist.objects.all()
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM artist")
+        artists = dictfetchall(cursor)
+
     context = {
         'artists': artists,
         'role': request.session.get('role', 'GUEST')
@@ -190,88 +235,114 @@ def ticket_category_manage_view(request):
 
         action = request.POST.get('action')
 
-        # delete ticket category
-        if action == 'delete':
-            category_id = request.POST.get('category_id')
-            try:
-                category = TicketCategory.objects.get(category_id=category_id)
-                category.delete()
-                messages.success(request, f"Kategori Tiket '{category.category_name}' berhasil dihapus!")
-            except TicketCategory.DoesNotExist:
-                messages.error(request, "Data kategori tiket tidak ditemukan!")
-            return redirect('ticket_category_manage')
-
-        # ambil input untuk create update
-        category_name = request.POST.get('category_name')
-        event_id = request.POST.get('event_id')
-        
-        try:
-            quota = int(request.POST.get('quota'))
-            price = float(request.POST.get('price'))
-        except (ValueError, TypeError):
-            messages.error(request, "Format Kuota atau Harga tidak valid!")
-            return redirect('ticket_category_manage')
-
-        if not category_name or not event_id:
-            messages.error(request, "Seluruh field wajib diisi!")
-            return redirect('ticket_category_manage')
-        if quota <= 0:
-            messages.error(request, "Kuota harus berupa bilangan bulat positif (> 0)!")
-            return redirect('ticket_category_manage')
-        if price < 0:
-            messages.error(request, "Harga tidak boleh negatif (>= 0)!")
-            return redirect('ticket_category_manage')
-
-        # validasi event + venue capacity
-        try:
-            event = Event.objects.select_related('venue').get(event_id=event_id)
-            venue_capacity = event.venue.capacity
-        except Event.DoesNotExist:
-            messages.error(request, "Event tidak valid.")
-            return redirect('ticket_category_manage')
-
-        if action == 'create':
-            # hitung total kuota saat ini untuk event tersebut
-            current_total_quota = TicketCategory.objects.filter(event=event).aggregate(total=Sum('quota'))['total'] or 0
-            
-            if current_total_quota + quota > venue_capacity:
-                messages.error(request, f"Gagal! Total kuota melebihi kapasitas venue ({venue_capacity} kursi).")
-            else:
-                TicketCategory.objects.create(
-                    category_id=str(uuid.uuid4()),
-                    category_name=category_name,
-                    quota=quota,
-                    price=price,
-                    event=event
-                )
-                messages.success(request, "Kategori Tiket baru berhasil dibuat!")
-
-        # update ticket category
-        elif action == 'update':
-            category_id = request.POST.get('category_id')
-            try:
-                category = TicketCategory.objects.get(category_id=category_id)
+        with connection.cursor() as cursor:
+            # DELETE TICKET CATEGORY
+            if action == 'delete':
+                category_id = request.POST.get('category_id')
+                # fetch name for message
+                cursor.execute("SELECT category_name FROM ticket_category WHERE category_id = %s", [category_id])
+                cat = cursor.fetchone()
                 
-                other_categories_quota = TicketCategory.objects.filter(event=event).exclude(category_id=category_id).aggregate(total=Sum('quota'))['total'] or 0
+                if cat:
+                    cursor.execute("DELETE FROM ticket_category WHERE category_id = %s", [category_id])
+                    messages.success(request, f"Kategori Tiket '{cat[0]}' berhasil dihapus!")
+                else:
+                    messages.error(request, "Data kategori tiket tidak ditemukan!")
+                return redirect('ticket_category_manage')
+
+            # inputs for CREATE + UPDATE
+            category_name = request.POST.get('category_name')
+            event_id = request.POST.get('event_id')
+            
+            try:
+                quota = int(request.POST.get('quota'))
+                price = float(request.POST.get('price'))
+            except (ValueError, TypeError):
+                messages.error(request, "Format Kuota atau Harga tidak valid!")
+                return redirect('ticket_category_manage')
+
+            if not category_name or not event_id:
+                messages.error(request, "Seluruh field wajib diisi!")
+                return redirect('ticket_category_manage')
+            if quota <= 0:
+                messages.error(request, "Kuota harus berupa bilangan bulat positif (> 0)!")
+                return redirect('ticket_category_manage')
+            if price < 0:
+                messages.error(request, "Harga tidak boleh negatif (>= 0)!")
+                return redirect('ticket_category_manage')
+
+            # validasi event + venue capacity
+            cursor.execute("""
+                SELECT v.capacity 
+                FROM event e
+                JOIN venue v ON e.venue_id = v.venue_id
+                WHERE e.event_id = %s
+            """, [event_id])
+            
+            venue_row = cursor.fetchone()
+            if not venue_row:
+                messages.error(request, "Event tidak valid.")
+                return redirect('ticket_category_manage')
+                
+            venue_capacity = venue_row[0]
+
+            if action == 'create':
+                cursor.execute("""
+                    SELECT COALESCE(SUM(quota), 0) 
+                    FROM ticket_category 
+                    WHERE event_id = %s
+                """, [event_id])
+                current_total_quota = cursor.fetchone()[0]
+                
+                if current_total_quota + quota > venue_capacity:
+                    messages.error(request, f"Gagal! Total kuota melebihi kapasitas venue ({venue_capacity} kursi).")
+                else:
+                    cursor.execute("""
+                        INSERT INTO ticket_category (category_id, category_name, quota, price, event_id)
+                        VALUES (%s, %s, %s, %s, %s)
+                    """, [str(uuid.uuid4()), category_name, quota, price, event_id])
+                    messages.success(request, "Kategori Tiket baru berhasil dibuat!")
+
+            elif action == 'update':
+                category_id = request.POST.get('category_id')
+                
+                cursor.execute("""
+                    SELECT COALESCE(SUM(quota), 0) 
+                    FROM ticket_category 
+                    WHERE event_id = %s AND category_id != %s
+                """, [event_id, category_id])
+                
+                other_categories_quota = cursor.fetchone()[0]
                 
                 if other_categories_quota + quota > venue_capacity:
                     messages.error(request, f"Gagal Update! Total kuota melebihi kapasitas venue ({venue_capacity} kursi).")
                 else:
-                    category.category_name = category_name
-                    category.quota = quota
-                    category.price = price
-                    category.save()
-                    messages.success(request, "Data Kategori Tiket berhasil diperbarui!")
-            except TicketCategory.DoesNotExist:
-                messages.error(request, "Kategori tiket tidak ditemukan!")
+                    cursor.execute("""
+                        UPDATE ticket_category 
+                        SET category_name = %s, quota = %s, price = %s
+                        WHERE category_id = %s
+                    """, [category_name, quota, price, category_id])
+                    
+                    if cursor.rowcount > 0:
+                        messages.success(request, "Data Kategori Tiket berhasil diperbarui!")
+                    else:
+                        messages.error(request, "Kategori tiket tidak ditemukan!")
 
         return redirect('ticket_category_manage')
 
-    # semua roles allowed melakukan Get
-    categories = TicketCategory.objects.select_related('event').order_by('event__event_title', 'category_name')
-    events = Event.objects.all()
-    
-    # role sudah dilempar ke context di bawah, sehingga bisa dipakai di HTML
+    # prepare GET request
+    with connection.cursor() as cursor:
+        cursor.execute("""
+            SELECT tc.*, e.event_title 
+            FROM ticket_category tc
+            JOIN event e ON tc.event_id = e.event_id
+            ORDER BY e.event_title, tc.category_name
+        """)
+        categories = dictfetchall(cursor)
+        
+        cursor.execute("SELECT * FROM event")
+        events = dictfetchall(cursor)
+        
     context = {
         'categories': categories,
         'events': events,
@@ -280,10 +351,9 @@ def ticket_category_manage_view(request):
     return render(request, 'ticket_category_manage.html', context)
 
 def list_event(request):
-    # 1. Ambil role dari session
-    role = request.session.get('role', 'ADMIN') # Default ADMIN biar tombol muncul
+    role = request.session.get('role', 'ADMIN')
     
-    # 2. Data Dummy Venue & Artist (Untuk dropdown di search bar & modal)
+    # dummy data venue + Artist
     dummy_venues = [
         {'id': 1, 'name': 'Stadion Senayan', 'city': 'Jakarta'},
         {'id': 2, 'name': 'Theater JKT48', 'city': 'Jakarta'},
@@ -296,7 +366,6 @@ def list_event(request):
         {'id': 3, 'name': 'Sheila on 7'},
     ]
     
-    # 3. Data Dummy Event (Isi list utama)
     dummy_events = [
         {
             'id': 1, 
@@ -320,19 +389,15 @@ def list_event(request):
         },
     ]
 
-    # 4. Logika POST (Create & Update)
     if request.method == 'POST':
         action = request.POST.get('action')
         if action == 'create':
-            # Logika simpan data baru di sini (Dummy redirect)
             print("Membuat event baru...")
         elif action == 'update':
-            # Logika update data di sini (Dummy redirect)
             print(f"Mengupdate event ID: {request.POST.get('event_id')}")
         
         return redirect('list_event')
 
-    # 5. Kirim semua ke context
     context = {
         'role': role,
         'events': dummy_events,
@@ -343,23 +408,19 @@ def list_event(request):
     return render(request, 'event.html', context)
 
 def list_venue(request):
-    # 1. Ambil role dari session (penting!)
     role = request.session.get('role', 'GUEST')
     
-    # Data dummy agar desain kartu venue tidak kosong
     dummy_venues = [
         {'id': 1, 'nama_venue': 'Stadion Senayan', 'alamat': 'Jakarta Pusat', 'kota': 'Jakarta', 'kapasitas': 50000, 'has_reserved': True},
         {'id': 2, 'nama_venue': 'Theater JKT48', 'alamat': 'fX Sudirman', 'kota': 'Jakarta', 'kapasitas': 400, 'has_reserved': False},
     ]
     
-    # 2. Kirim 'role' ke dalam context
     context = {
         'venues': dummy_venues,
         'role': role
     }
     return render(request, 'venue.html', context)
     
-# Fungsi kosong supaya tombol Tambah/Edit tidak error
 def placeholder(request, *args, **kwargs):
     return render(request, 'venue.html')
 
@@ -368,43 +429,218 @@ def venues(request):
         action = request.POST.get("action")
         
         if action == "CREATE":
-            # Logika simpan venue baru
             pass
         elif action == "UPDATE":
             venue_id = request.POST.get("venue_id")
-            # Logika update venue berdasarkan ID
             pass
         elif action == "DELETE":
             venue_id = request.POST.get("venue_id")
-            # Logika hapus venue berdasarkan ID
             pass
             
-        return redirect('venues') # Tetap di halaman yang sama
+        return redirect('venues') 
 
-    # Logika GET (menampilkan list)
-    venues = Venue.objects.all()
-    return render(request, 'venues.html', {'venues': venues})
-def ticket_view(request):
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM venue")
+        venues_list = dictfetchall(cursor)
+
+    return render(request, 'venues.html', {'venues': venues_list})
+
+def ticket_view(request: HttpRequest):
     role = request.session.get('role', 'GUEST')
-    tickets = Ticket.objects.all()
-    categories = [TicketCategory.objects.get(category_id=t.tcategory_id) for t in tickets]
-    events = [Event.objects.get(event_id=c.event_id) for c in categories]
-    order = [Orders.objects.get(order_id=t.torder_id) for t in tickets]
-    pelanggan = [Customer.objects.get(customer_id=o.customer_id) for o in order]
-    seats = [HasRelationship.objects.filter(ticket=t).select_related('seat') for t in tickets]
-    context = {
-        'tickets': tickets,
-        'events': events,
-        'categories': categories,
-        'pelanggan': pelanggan,
-        'order': order,
-        'pelanggan': pelanggan,
-        'seats': seats
-    }
-    if role == 'CUSTOMER':
-        return render(request, 'my_tickets.html', context)
-    else:
-        return render(request, 'ticket_manage.html', context)
+    user_id = request.session.get('user_id', '0')
+    
+    if role == 'GUEST': 
+        return redirect("login")
+
+    if request.method == "POST":
+        action = request.POST.get('action')
+        
+        filter_params = {}
+        if request.POST.get('ticket_filter'):
+            filter_params['ticket_filter'] = request.POST.get('ticket_filter')
+        if request.POST.get('ticket_status'):
+            filter_params['ticket_status'] = request.POST.get('ticket_status')
+            
+        redirect_url = reverse('tickets')
+        if filter_params:
+            redirect_url += '?' + urlencode(filter_params)
+        
+        with connection.cursor() as cursor:
+            if action == 'create' and role in ['ADMIN', 'ORGANIZER']:
+                order_id = request.POST.get('order_id')
+                category_id = request.POST.get('category_id')
+                seat_id = request.POST.get('seat_id')
+
+                ticket_id = uuid.uuid4()
+                # TODO: kode tiket gen
+                ticket_code = f"TICK-{uuid.uuid4().hex[:8].upper()}"
+
+                cursor.execute(
+                    "insert into ticket (ticket_id, ticket_code, tcategory_id, torder_id) values (%s, %s, %s, %s) returning ticket_id",
+                    [ticket_id, ticket_code, category_id, order_id]
+                )
+                new_ticket = cursor.fetchone()
+                
+                if new_ticket and seat_id:
+                    new_ticket_id = new_ticket[0]
+                    cursor.execute(
+                        "insert into has_relationship (ticket_id, seat_id) values (%s, %s)",
+                        [new_ticket_id, seat_id]
+                    )
+                
+                return redirect(redirect_url)
+
+            elif action == 'update' and role == 'ADMIN':
+                ticket_id = request.POST.get('ticket_id')
+                payment_status = request.POST.get('payment_status')
+                seat_id = request.POST.get('seat_id')
+
+                cursor.execute(
+                    "update orders set payment_status = %s where order_id = (select torder_id from ticket where ticket_id = %s)",
+                    [payment_status, ticket_id]
+                )
+
+                if seat_id:
+                    cursor.execute("select 1 from has_relationship where ticket_id = %s", [ticket_id])
+                    exists = cursor.fetchone()
+                    
+                    if exists:
+                        cursor.execute(
+                            "update has_relationship set seat_id = %s where ticket_id = %s",
+                            [seat_id, ticket_id]
+                        )
+                    else:
+                        cursor.execute(
+                            "insert into has_relationship (ticket_id, seat_id) values (%s, %s)",
+                            [ticket_id, seat_id]
+                        )
+                else:
+                    cursor.execute("delete from has_relationship where ticket_id = %s", [ticket_id])
+
+                return redirect(redirect_url)
+
+            elif action == 'delete' and role == 'ADMIN':
+                ticket_id = request.POST.get('ticket_id')
+
+                cursor.execute("delete from has_relationship where ticket_id = %s", [ticket_id])
+                
+                cursor.execute("delete from ticket where ticket_id = %s", [ticket_id])
+
+                return redirect(redirect_url)
+
+    with connection.cursor() as cursor:
+        if request.method == "GET":
+            ticket_filter = (request.GET.get('ticket_filter') or '').strip()
+            status_filter = (request.GET.get('ticket_status') or '').strip()
+
+            ##TODO: perlu sort keknya
+            base_query = """
+                select * from ticket t 
+                join ticket_category tc on tc.category_id = t.tcategory_id 
+                join event e on e.event_id = tc.event_id 
+                join orders o on o.order_id = t.torder_id 
+                join customer c on c.customer_id = o.customer_id 
+                left join has_relationship hr on hr.ticket_id = t.ticket_id 
+                left join seat s on s.seat_id = hr.seat_id
+            """
+
+            conditions = []
+            params = []
+            
+            if role == 'CUSTOMER':
+                conditions.append("c.customer_id = %s")
+                params.append(user_id)
+            elif role == 'ORGANIZER':
+                conditions.append("e.organizer_id = %s")
+                params.append(user_id)
+
+            if ticket_filter:
+                conditions.append("(lower(e.event_title) like lower(%s) or lower(t.ticket_code) like lower(%s))")
+                params.append(f"%{ticket_filter}%")
+                params.append(f"%{ticket_filter}%")
+
+            if status_filter:
+                conditions.append("o.payment_status = %s")
+                params.append(status_filter)
+
+            if conditions:
+                base_query += " where " + " and ".join(conditions)
+            
+            cursor.execute(base_query, params)
+            # print(cursor.description)
+            tickets = dictfetchall(cursor)
+
+            # TODO: Paid atau gmn
+            # cursor.execute("select distinct payment_status from orders")
+            # statuses = cursor.fetchall()
+            statuses = ["PAID", "PENDING", "REJECTED"]
+
+            orders_options = []
+            events_options = []
+            categories_options = []
+            seats_options = []
+            
+            if role in ('ADMIN', 'ORGANIZER'):
+                cursor.execute("select * from orders o join customer c on c.customer_id = o.customer_id")
+                orders_options = dictfetchall(cursor)
+                
+                events_options_query = f"select * from event{
+                    f" where organizer_id = {user_id}" if role == 'ORGANIZER' else ""}"
+
+                cursor.execute(events_options_query)
+                events_options = dictfetchall(cursor)
+                
+                categories_options_query = f"""
+                    select 
+                        tc.category_id, 
+                        tc.category_name, 
+                        e.event_title, 
+                        tc.event_id, 
+                        tc.price as harga, 
+                        tc.quota, 
+                        coalesce(count(t.ticket_id), 0) as terpakai
+                    from ticket_category tc 
+                    join {
+                        f"(select * from event where organizer_id = {user_id})" 
+                        if role == 'ORGANIZER' else "event"
+                    } e on tc.event_id = e.event_id
+                    left join ticket t on tc.category_id = t.tcategory_id
+                    group by tc.category_id, tc.category_name, e.event_title, tc.event_id, tc.price, tc.quota
+                    having coalesce(count(t.ticket_id), 0) < tc.quota
+                """
+                cursor.execute(categories_options_query)
+                categories_options = dictfetchall(cursor)
+                
+                seats_options_query = f"""
+                    select *,
+                        (select hr.ticket_id
+                         from has_relationship hr
+                         join ticket t on hr.ticket_id = t.ticket_id
+                         join ticket_category tc on t.tcategory_id = tc.category_id
+                         where hr.seat_id = s.seat_id and tc.event_id = e.event_id
+                         limit 1) as occupied_by_ticket_id
+                    from seat s 
+                    join event e on s.venue_id = e.venue_id
+                    {f" where e.organizer_id = {user_id}" if role == 'ORGANIZER' else ""}
+                """
+                cursor.execute(seats_options_query)
+                seats_options = dictfetchall(cursor)
+
+            context = {
+                'tickets': tickets,
+                'statuses': statuses,
+                'orders_options': orders_options,
+                'events_options': events_options,
+                'categories_options': categories_options,
+                'seats_options': seats_options,
+                'event_filter': ticket_filter,
+                'status_filter': status_filter,
+                'role': role
+            }
+            return render(request, 'tickets.html', context)
     
 def seats_view(request):
-    return render(request, 'seats.html', {'seats': Seat.objects.all()})
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM seat")
+        seats = dictfetchall(cursor)
+    return render(request, 'seats.html', {'seats': seats})
