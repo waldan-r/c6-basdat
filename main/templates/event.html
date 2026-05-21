@@ -131,19 +131,8 @@
 </div>
 
 <script>
-    // 1. STATE MANAGEMENT (Konsep sama seperti venue.html agar tidak reset saat disubmit)
-    let eventData = [
-        {
-            name: "Harmoni Alam Konser",
-            date: "2026-05-15",
-            time: "19:00",
-            venue: "Stadion Senayan",
-            categories: [
-                {name: "Festival", price: 150000},
-                {name: "VIP", price: 500000}
-            ]
-        }
-    ];
+    // 1. STATE MANAGEMENT 
+    let eventData = JSON.parse('{{ events_js|safe }}');
 
     const grid = document.getElementById('eventGrid');
 
@@ -268,50 +257,66 @@ function openCreateModal() {
 
     // 4. SUBMIT (CREATE & UPDATE)
     document.getElementById('eventForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    
-    const names = document.querySelectorAll('.cat-name');
-    const prices = document.querySelectorAll('.cat-price');
-    const stocks = document.querySelectorAll('.cat-stock');
-    
-    let categories = [];
-    let isValid = true;
+        e.preventDefault();
+        
+        const names = document.querySelectorAll('.cat-name');
+        const prices = document.querySelectorAll('.cat-price');
+        const stocks = document.querySelectorAll('.cat-stock');
+        
+        let categories = [];
+        let isValid = true;
 
-    names.forEach((n, i) => {
-        const price = parseFloat(prices[i].value);
-        const stock = parseInt(stocks[i].value);
+        names.forEach((n, i) => {
+            const price = parseFloat(prices[i].value);
+            const stock = parseInt(stocks[i].value);
 
-        // Validasi: Harga > 0 dan Sisa >= 0
-        if (price <= 0 || stock < 0) {
-            alert(`Kategori ${n.value || (i+1)} tidak valid! Harga harus > 0 dan sisa tiket harus >= 0.`);
-            isValid = false;
-            return;
-        }
+            if (price <= 0 || stock < 0) {
+                alert(`Kategori ${n.value || (i+1)} tidak valid! Harga harus > 0 dan sisa tiket harus >= 0.`);
+                isValid = false;
+                return;
+            }
 
-        categories.push({
-            name: n.value,
-            price: price,
-            stock: stock // Menyimpan sisa tiket
+            categories.push({
+                name: n.value,
+                price: price,
+                stock: stock
+            });
+        });
+
+        if (!isValid) return;
+
+        const eventId = document.getElementById('editIndex').value;
+        const data = {
+            action: eventId !== "-1" ? 'UPDATE' : 'CREATE',
+            event_id: eventId !== "-1" ? eventId : null,
+            name: document.getElementById('inputName').value,
+            date: document.getElementById('inputDate').value,
+            time: document.getElementById('inputTime').value,
+            venue: document.getElementById('inputVenue').value,
+            categories: categories
+        };
+
+        fetch("{% url 'list_event' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}"
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.status === 'success') {
+                location.reload();
+            } else {
+                alert("Terjadi kesalahan: " + result.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert("Gagal terhubung ke server.");
         });
     });
-
-    if (!isValid) return;
-
-    const data = {
-        name: document.getElementById('inputName').value,
-        date: document.getElementById('inputDate').value,
-        time: document.getElementById('inputTime').value,
-        venue: document.getElementById('inputVenue').value,
-        categories: categories
-    };
-
-    const idx = parseInt(document.getElementById('editIndex').value);
-    if (idx > -1) eventData[idx] = data;
-    else eventData.push(data);
-
-    renderEvents();
-    closeModal();
-});
 
     // 5. EDIT ACTION
     function editEvent(index) {

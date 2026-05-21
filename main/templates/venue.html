@@ -5,25 +5,30 @@
 {% block content %}
     <!-- Section Statistik -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <div class="bg-gradient-to-br from-blue-600 to-blue-400 rounded-2xl shadow-lg p-6 flex items-center">
-            <div class="bg-white/20 rounded-full p-4 mr-5"><i class="fas fa-building text-2xl text-white"></i></div>
+        <!-- Total Venue -->
+        <div class="...">
+            ...
             <div class="text-white">
-                <p class="text-sm font-medium opacity-80 uppercase">Total Venue</p>
-                <h3 id="stat-total" class="text-3xl font-bold">0</h3>
+                <p class="...">Total Venue</p>
+                <h3 id="stat-total" class="text-3xl font-bold">{{ stats.total_venue }}</h3>
             </div>
         </div>
-        <div class="bg-gradient-to-br from-purple-700 to-indigo-500 rounded-2xl shadow-lg p-6 flex items-center">
-            <div class="bg-white/20 rounded-full p-4 mr-5"><i class="fas fa-chair text-2xl text-white"></i></div>
+
+        <!-- Reserved Seating -->
+        <div class="...">
+            ...
             <div class="text-white">
-                <p class="text-sm font-medium opacity-80 uppercase">Reserved Seating</p>
-                <h3 id="stat-reserved" class="text-3xl font-bold">0</h3>
+                <p class="...">Reserved Seating</p>
+                <h3 id="stat-reserved" class="text-3xl font-bold">{{ stats.total_reserved }}</h3>
             </div>
         </div>
-        <div class="bg-gradient-to-br from-emerald-600 to-teal-400 rounded-2xl shadow-lg p-6 flex items-center">
-            <div class="bg-white/20 rounded-full p-4 mr-5"><i class="fas fa-users text-2xl text-white"></i></div>
+
+        <!-- Total Kapasitas -->
+        <div class="...">
+            ...
             <div class="text-white">
-                <p class="text-sm font-medium opacity-80 uppercase">Total Kapasitas</p>
-                <h3 id="stat-kapasitas" class="text-3xl font-bold">0</h3>
+                <p class="...">Total Kapasitas</p>
+                <h3 id="stat-kapasitas" class="text-3xl font-bold">{{ stats.total_capacity }}</h3>
             </div>
         </div>
     </div>
@@ -43,35 +48,41 @@
 
     <!-- Container Utama -->
     <div id="containerVenue" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        
-        <!-- Contoh Venue 1 (GBK) -->
-        <div id="venue-1" class="venue-card group bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+        {% for venue in venues %}
+        <div id="venue-{{ venue.venue_id }}" class="venue-card group bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+            
             <div class="relative h-52 overflow-hidden">
                 <img src="https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=500" class="w-full h-full object-cover">
+                
                 <div class="absolute top-4 right-4">
-                    <!-- Pastikan ada class 'label-seating' -->
-                    <span id="label-venue-1" class="bg-blue-600 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg shadow-lg label-seating">
-                        Reserved Seating
+                    <span class="{% if venue.has_reserved_seating %}bg-blue-600{% else %}bg-gray-500{% endif %} text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg shadow-lg label-seating">
+                        {% if venue.has_reserved_seating %}Reserved Seating{% else %}Free Seating{% endif %}
                     </span>
                 </div>
             </div>
+
             <div class="p-6">
-                <h5 class="venue-nama text-xl font-bold text-gray-800 mb-2">Stadion Utama GBK</h5>
-                <p class="venue-alamat text-gray-500 text-sm mb-4 leading-relaxed">Jl. Pintu Satu Senayan, Jakarta Pusat</p>
+                <h5 class="venue-nama text-xl font-bold text-gray-800 mb-2">{{ venue.venue_name }}</h5>
+                <p class="venue-alamat text-gray-500 text-sm mb-4 leading-relaxed">{{ venue.address }}, {{ venue.city }}</p>
+                
                 <div class="flex items-center text-gray-700 font-semibold mb-6">
                     <i class="fas fa-users mr-2 text-blue-500"></i>
-                    <span>Kapasitas: <span class="venue-kapasitas text-blue-600">77.193</span></span>
+                    <span>Kapasitas: <span class="venue-kapasitas text-blue-600">{{ venue.capacity }}</span></span>
                 </div>
                 
                 <div class="flex gap-3 border-t border-gray-50 pt-5">
                     {% if role == 'ADMIN' or role == 'ORGANIZER' %}
-                        <button onclick="prepareUpdate('venue-1')" class="flex-1 border-2 border-amber-400 text-amber-600 hover:bg-amber-400 hover:text-white font-bold py-2 rounded-xl transition-all text-sm">Edit</button>
-                        <button onclick="prepareDelete('venue-1', 'Stadion Utama GBK')" class="flex-1 border-2 border-red-400 text-red-600 hover:bg-red-400 hover:text-white font-bold py-2 rounded-xl transition-all text-sm">Hapus</button>
+                        <button onclick="prepareUpdate('venue-{{ venue.venue_id }}')" class="flex-1 border-2 border-amber-400 text-amber-600 hover:bg-amber-400 hover:text-white font-bold py-2 rounded-xl transition-all text-sm">Edit</button>
+                        <button onclick="prepareDelete('venue-{{ venue.venue_id }}', '{{ venue.venue_name }}')" class="flex-1 border-2 border-red-400 text-red-600 hover:bg-red-400 hover:text-white font-bold py-2 rounded-xl transition-all text-sm">Hapus</button>
                     {% endif %}
                 </div>
             </div>
         </div>
-
+        {% empty %}
+        <div class="col-span-3 text-center py-20">
+            <p class="text-gray-500">Belum ada venue yang tersedia di database.</p>
+        </div>
+        {% endfor %}
     </div>
 </div>
 
@@ -178,50 +189,34 @@
     }
 
     function simpanVenueBaru() {
-        const nama = document.getElementById('add-nama').value;
-        const alamat = document.getElementById('add-alamat').value;
-        const kota = document.getElementById('add-kota').value;
-        const kapasitas = document.getElementById('add-kapasitas').value;
-        const isReserved = document.getElementById('add-reserved').checked;
+        const data = {
+            action: 'CREATE',
+            nama: document.getElementById('add-nama').value,
+            alamat: document.getElementById('add-alamat').value,
+            kota: document.getElementById('add-kota').value,
+            kapasitas: document.getElementById('add-kapasitas').value,
+            is_reserved: document.getElementById('add-reserved').checked
+        };
 
-        if (!nama || !kapasitas) return alert("Wajib isi Nama & Kapasitas!");
+        if (!data.nama || !data.kapasitas) return alert("Wajib isi Nama & Kapasitas!");
 
-        const id = 'venue-' + Date.now();
-        const labelText = isReserved ? 'Reserved Seating' : 'Free Seating';
-        const labelClass = isReserved ? 'bg-blue-600' : 'bg-gray-500';
-
-        const html = `
-            <div id="${id}" class="venue-card group bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
-                <div class="relative h-52 overflow-hidden">
-                    <img src="https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=500" class="w-full h-full object-cover">
-                    <div class="absolute top-4 right-4">
-                        <span id="label-${id}" class="${labelClass} text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg shadow-lg label-seating">
-                            ${labelText}
-                        </span>
-                    </div>
-                </div>
-                <div class="p-6">
-                    <h5 class="venue-nama text-xl font-bold text-gray-800 mb-2">${nama}</h5>
-                    <p class="venue-alamat text-gray-500 text-sm mb-4">${alamat}, ${kota}</p>
-                    <div class="font-semibold mb-6 text-gray-700">Kapasitas: <span class="venue-kapasitas text-blue-600">${Number(kapasitas).toLocaleString('id-ID')}</span></div>
-                    <div class="flex gap-3 border-t border-gray-50 pt-5">
-                        <button onclick="prepareUpdate('${id}')" class="flex-1 border-2 border-amber-400 text-amber-600 hover:bg-amber-400 hover:text-white font-bold py-2 rounded-xl transition-all text-sm">Edit</button>
-                        <button onclick="prepareDelete('${id}', '${nama}')" class="flex-1 border-2 border-red-400 text-red-600 hover:bg-red-400 hover:text-white font-bold py-2 rounded-xl transition-all text-sm">Hapus</button>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.getElementById('containerVenue').insertAdjacentHTML('afterbegin', html);
-        toggleModal('modalTambahVenue');
-        updateGlobalStats();
-        
-        // Reset Form
-        document.getElementById('add-nama').value = '';
-        document.getElementById('add-alamat').value = '';
-        document.getElementById('add-kota').value = '';
-        document.getElementById('add-kapasitas').value = '';
-        document.getElementById('add-reserved').checked = false;
+        // Kirim ke Django
+        fetch("{% url 'venue_manage' %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}",
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.status === 'success') {
+                location.reload(); // Reload agar data muncul dari database
+            } else {
+                alert("Gagal simpan: " + result.message);
+            }
+        });
     }
 
     function prepareUpdate(id) {
@@ -263,13 +258,27 @@
     }
 
     function eksekusiHapus() {
-        const id = document.getElementById('delete-id').value;
-        const card = document.getElementById(id);
-        if (card) {
-            card.remove();
-            updateGlobalStats();
-        }
-        toggleModal('modalKonfirmasiHapus');
+        const venueId = document.getElementById('delete-id').value.replace('venue-', ''); // Ambil ID asli
+        
+        fetch("{% url 'venue_manage' %}", {
+            method: "POST",
+            headers: {
+                "X-CSRFToken": "{{ csrf_token }}",
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                action: 'DELETE',
+                venue_id: venueId
+            })
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.status === 'success') {
+                location.reload();
+            } else {
+                alert("Gagal menghapus!");
+            }
+        });
     }
 </script>
 {% endblock %}

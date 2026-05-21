@@ -1,10 +1,8 @@
-from django.shortcuts import render
-import uuid
-
-# Create your views here.
 from django.shortcuts import render, redirect
+import uuid
 from django.contrib import messages
 from .models import HasRelationship, Orders, Seat, Ticket, UserAccount, AccountRole, Customer, Organizer, Role, Artist, TicketCategory, Event
+from django.db.models import Sum, Min, Q
 
 def login_view(request):
     # login
@@ -280,110 +278,143 @@ def ticket_category_manage_view(request):
     return render(request, 'ticket_category_manage.html', context)
 
 def list_event(request):
-    # 1. Ambil role dari session
-    role = request.session.get('role', 'ADMIN') # Default ADMIN biar tombol muncul
+    role = request.session.get('role', 'GUEST')
     
-    # 2. Data Dummy Venue & Artist (Untuk dropdown di search bar & modal)
-    dummy_venues = [
-        {'id': 1, 'name': 'Stadion Senayan', 'city': 'Jakarta'},
-        {'id': 2, 'name': 'Theater JKT48', 'city': 'Jakarta'},
-        {'id': 3, 'name': 'ICE BSD', 'city': 'Tangerang'},
-    ]
-    
-    dummy_artists = [
-        {'id': 1, 'name': 'Tulus'},
-        {'id': 2, 'name': 'Hindia'},
-        {'id': 3, 'name': 'Sheila on 7'},
-    ]
-    
-    # 3. Data Dummy Event (Isi list utama)
-    dummy_events = [
-        {
-            'id': 1, 
-            'name': 'Konser Merayakan Gelap', 
-            'date': '2026-05-20', 
-            'time': '19:00',
-            'venue': dummy_venues[0],
-            'artists_list': ['Hindia', 'Lomba Sihir'],
-            'min_price': 150000,
-            'poster': {'url': 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?auto=format&fit=crop&w=800'}
-        },
-        {
-            'id': 2, 
-            'name': 'JKT48 Theater Show', 
-            'date': '2026-06-12', 
-            'time': '14:00',
-            'venue': dummy_venues[1],
-            'artists_list': ['JKT48 Gen 11'],
-            'min_price': 200000,
-            'poster': {'url': 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&w=800'}
-        },
-    ]
-
-    # 4. Logika POST (Create & Update)
     if request.method == 'POST':
-        action = request.POST.get('action')
-        if action == 'create':
-            # Logika simpan data baru di sini (Dummy redirect)
-            print("Membuat event baru...")
-        elif action == 'update':
-            # Logika update data di sini (Dummy redirect)
-            print(f"Mengupdate event ID: {request.POST.get('event_id')}")
-        
-        return redirect('list_event')
+        try:
+            data = json.loads(request.body)
+            action = data.get('action')
 
-    # 5. Kirim semua ke context
+            with transaction.atomic(): 
+                if action in ['CREATE', 'UPDATE']:
+                    # Cari Venue berdasarkan nama yang dikirim dari modal
+                    venue_obj = Venue.objects.get(venue_name=data.get('venue'))
+                    
+                    # Logika Create atau Update
+                    event_id = data.get('event_id') if action == 'UPDATE' else str(uuid.uuid4())[:18]
+                    
+                    event, created = Event.objects.update_or_create(
+                        event_id=event_id,
+                        defaults={
+                            'event_title': data.get('name'),
+                            'event_datetime': f"{data.get('date')} {data.get('time')}",
+                            'venue': venue_obj,
+                            'organizer': Organizer.objects.first() 
+                        }
+                    )
+
+                    # Simpan Kategori Tiket 
+                    TicketCategory.objects.filter(event=event).delete()
+                    for cat in data.get('categories', []):
+                        TicketCategory.objects.create(
+                            category_id=str(uuid.uuid4())[:18],
+                            category_name=cat['name'],
+                            price=cat['price'],
+                            quota=cat['stock'],
+                            event=event
+                        )
+
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+
+    search_query = request.GET.get('q', '')
+    venue_filter = request.GET.get('venue', '')
+    artist_filter = request.GET.get('artist', '')
+
+    events_qs = Event.objects.select_related('venue').prefetch_related('categories', 'eventartist_set__artist')
+
+    if search_query:
+        events_qs = events_qs.filter(event_title__icontains=search_query)
+    if venue_filter:
+        events_qs = events_qs.filter(venue_id=venue_filter)
+    if artist_filter:
+        events_qs = events_qs.filter(eventartist_set__artist_id=artist_filter)
+
+    events_data = []
+    for e in events_qs:
+        cats = list(e.categories.values('category_name', 'price', 'quota'))
+        min_p = e.categories.aggregate(Min('price'))['price__min'] or 0
+        
+        events_data.append({
+            'id': e.event_id,
+            'name': e.event_title,
+            'date': e.event_datetime.strftime('%Y-%m-%d'),
+            'time': e.event_datetime.strftime('%H:%M'),
+            'venue': e.venue.venue_name,
+            'categories': [{'name': c['category_name'], 'price': int(c['price']), 'stock': c['quota']} for c in cats],
+            'min_price': int(min_p)
+        })
+
     context = {
         'role': role,
-        'events': dummy_events,
-        'venues': dummy_venues,
-        'artists': dummy_artists,
+        'events_js': json.dumps(events_data), 
+        'venues': Venue.objects.all(),
+        'artists': Artist.objects.all(),
     }
-    
     return render(request, 'event.html', context)
 
 def list_venue(request):
-    # 1. Ambil role dari session (penting!)
     role = request.session.get('role', 'GUEST')
-    
-    # Data dummy agar desain kartu venue tidak kosong
-    dummy_venues = [
-        {'id': 1, 'nama_venue': 'Stadion Senayan', 'alamat': 'Jakarta Pusat', 'kota': 'Jakarta', 'kapasitas': 50000, 'has_reserved': True},
-        {'id': 2, 'nama_venue': 'Theater JKT48', 'alamat': 'fX Sudirman', 'kota': 'Jakarta', 'kapasitas': 400, 'has_reserved': False},
-    ]
-    
-    # 2. Kirim 'role' ke dalam context
+    venues_qs = Venue.objects.all().order_by('venue_name')
+
+    # Hitung Statistik Otomatis
+    total_capacity = venues_qs.aggregate(Sum('capacity'))['capacity__sum'] or 0
+    total_reserved = venues_qs.filter(has_reserved_seating=True).count()
+
     context = {
-        'venues': dummy_venues,
-        'role': role
+        'venues': venues_qs,
+        'role': role,
+        'stats': {
+            'total_venue': venues_qs.count(),
+            'total_reserved': total_reserved,
+            'total_capacity': total_capacity,
+        }
     }
     return render(request, 'venue.html', context)
     
-# Fungsi kosong supaya tombol Tambah/Edit tidak error
-def placeholder(request, *args, **kwargs):
-    return render(request, 'venue.html')
-
-def venues(request):
-    if request.method == "POST":
-        action = request.POST.get("action")
+def venue_manage_view(request):
+    if request.method == 'POST':
+        action = request.POST.get('action')
         
-        if action == "CREATE":
-            # Logika simpan venue baru
-            pass
-        elif action == "UPDATE":
-            venue_id = request.POST.get("venue_id")
-            # Logika update venue berdasarkan ID
-            pass
-        elif action == "DELETE":
-            venue_id = request.POST.get("venue_id")
-            # Logika hapus venue berdasarkan ID
-            pass
-            
-        return redirect('venues') # Tetap di halaman yang sama
+        try:
+            if action == 'CREATE':
+                new_venue = Venue(
+                    venue_id=str(uuid.uuid4())[:18],
+                    venue_name=request.POST.get('nama'),
+                    address=request.POST.get('alamat'),
+                    city=request.POST.get('kota'),
+                    capacity=int(request.POST.get('kapasitas')),
+                    has_reserved_seating=request.POST.get('reserved') == 'on'
+                )
+                new_venue.save() # Ini akan memicu fungsi clean() di models
+                messages.success(request, "Venue berhasil ditambahkan!")
 
-    # Logika GET (menampilkan list)
-    venues = Venue.objects.all()
-    return render(request, 'venues.html', {'venues': venues})
+            elif action == 'UPDATE':
+                v_id = request.POST.get('venue_id')
+                venue = Venue.objects.get(pk=v_id)
+                venue.venue_name = request.POST.get('nama')
+                venue.address = request.POST.get('alamat')
+                venue.city = request.POST.get('kota')
+                venue.capacity = int(request.POST.get('kapasitas'))
+                venue.has_reserved_seating = request.POST.get('reserved') == 'on'
+                venue.save()
+                messages.success(request, "Data venue berhasil diperbarui!")
+
+            elif action == 'DELETE':
+                v_id = request.POST.get('venue_id')
+                venue = Venue.objects.get(pk=v_id)
+                venue.delete() # Ini akan memicu proteksi event aktif di models
+                messages.success(request, "Venue berhasil dihapus!")
+
+        except ValidationError as e:
+            # Menangkap pesan error dari models.py (Duplikasi & Event Aktif)
+            messages.error(request, e.message)
+        except Exception as e:
+            messages.error(request, f"Terjadi kesalahan: {str(e)}")
+
+    return redirect('list_venue')
+
 def ticket_view(request):
     role = request.session.get('role', 'GUEST')
     tickets = Ticket.objects.all()

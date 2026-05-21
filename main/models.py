@@ -1,4 +1,6 @@
 from django.db import models
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 
 class UserAccount(models.Model):
     user_id = models.CharField(max_length=255, primary_key=True) #
@@ -56,6 +58,35 @@ class Venue(models.Model):
     class Meta:
         db_table = 'venue'
         managed = False
+
+    def clean(self):
+        duplicates = Venue.objects.filter(
+            venue_name__iexact=self.venue_name,
+            city__iexact=self.city
+        ).exclude(pk=self.venue_id)
+        
+        if duplicates.exists():
+            existing = duplicates.first()
+            raise ValidationError(
+                f"ERROR: Venue \"{self.venue_name}\" di kota \"{self.city}\" sudah terdaftar dengan ID {existing.pk}."
+            )
+
+    def delete(self, *args, **kwargs):
+        now = timezone.now()
+        active_events = Event.objects.filter(
+            venue=self,
+            event_datetime__gte=now
+        )
+        
+        if active_events.exists():
+            raise ValidationError(
+                f"ERROR: Venue '{self.venue_name}' masih memiliki event aktif sehingga tidak dapat dihapus."
+            )
+        super().delete(*args, **kwargs)
+    
+    @property
+    def has_reserved_seating(self):
+        return self.capacity % 2 == 0
 
 class Event(models.Model):
     event_id = models.CharField(max_length=255, primary_key=True)
