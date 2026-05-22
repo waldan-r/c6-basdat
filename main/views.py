@@ -29,6 +29,7 @@ from .models import (
     Venue,
 )
 
+
 def fetchall(cursor):
     columns = [column[0] for column in cursor.description]
     return [dict(zip(columns, row)) for row in cursor.fetchall()]
@@ -178,15 +179,11 @@ def dashboard_view(request):
 
 
 def artist_list_view(request):
-    with connection.cursor() as cursor:
-        cursor.execute("SELECT * FROM artist")
-        artists = dictfetchall(cursor)
-        
-    context = {
-        'artists': artists,
-        'role': request.session.get('role', 'GUEST')
-    }
-    return render(request, 'artists.html', context)
+    with db_cursor() as cursor:
+        cursor.execute("SELECT artist_id, name, genre FROM artist ORDER BY name")
+        artists = fetchall(cursor)
+    return render(request, "artists.html", {"artists": artists, "role": request.session.get("role", "GUEST")})
+
 
 def artist_manage_view(request):
     if request.method == "POST":
@@ -348,30 +345,6 @@ def ticket_category_manage_view(request):
 
     return render(request, "ticket_category_manage.html", {"categories": categories, "events": events, "role": role})
 
-
-
-
-def seats_view(request):
-    with db_cursor() as cursor:
-        cursor.execute(
-            """
-            SELECT s.seat_id, s.section, s.row_number, s.seat_number, v.venue_name
-            FROM seat s
-            JOIN venue v ON v.venue_id = s.venue_id
-            ORDER BY v.venue_name, s.section, s.row_number, s.seat_number
-            """
-        )
-        seats = [
-            {
-                "seat_id": row["seat_id"],
-                "section": row["section"],
-                "row_number": row["row_number"],
-                "seat_number": row["seat_number"],
-                "venue": {"venue_name": row["venue_name"]},
-            }
-            for row in fetchall(cursor)
-        ]
-    return render(request, "seats.html", {"seats": seats})
 
 def list_event(request):
     role = request.session.get('role', 'GUEST')
@@ -727,7 +700,29 @@ def venue_manage_view(request):
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
             
     return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=405)
-        
+
+def seats_view(request):
+    with db_cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT s.seat_id, s.section, s.row_number, s.seat_number, v.venue_name
+            FROM seat s
+            JOIN venue v ON v.venue_id = s.venue_id
+            ORDER BY v.venue_name, s.section, s.row_number, s.seat_number
+            """
+        )
+        seats = [
+            {
+                "seat_id": row["seat_id"],
+                "section": row["section"],
+                "row_number": row["row_number"],
+                "seat_number": row["seat_number"],
+                "venue": {"venue_name": row["venue_name"]},
+            }
+            for row in fetchall(cursor)
+        ]
+    return render(request, "seats.html", {"seats": seats})
+
 def ticket_view(request: HttpRequest):
     role = request.session.get('role', 'GUEST')
     user_id = request.session.get('user_id', '0')
