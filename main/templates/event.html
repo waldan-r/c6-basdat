@@ -190,13 +190,38 @@
 <script>
     // 1. STATE MANAGEMENT 
     let eventData = JSON.parse('{{ events_js|safe }}');
-
+    const currentRole = '{{ role }}';
+    const currentUserId = '{{ current_user_id }}';
     const grid = document.getElementById('eventGrid');
 
     // 2. RENDER UI
     function renderEvents() {
         grid.innerHTML = '';
         eventData.forEach((event, index) => {
+
+            let managementButtons = '';
+            if (currentRole === 'ADMIN' || (currentRole === 'ORGANIZER' && event.organizer_id === currentUserId)) {
+                managementButtons = `
+                    <div class="absolute top-4 right-4 z-10 flex items-center gap-2">
+                        <button onclick="editEvent(${index})" class="bg-white/90 text-blue-600 px-4 py-2 rounded-full shadow-md hover:bg-blue-600 hover:text-white text-xs font-bold flex items-center gap-2">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        <button onclick="openDeleteModal(${index})" class="bg-white/90 text-red-600 px-4 py-2 rounded-full shadow-md hover:bg-red-600 hover:text-white text-xs font-bold flex items-center gap-2">
+                            <i class="fas fa-trash-alt"></i> Hapus
+                        </button>
+                    </div>
+                `;
+            }
+
+            let actionButton = '';
+            if (currentRole === 'CUSTOMER' || currentRole === 'ORGANIZER') {
+                actionButton = `
+                    <a href="/orders-promo/my" class="inline-block bg-gray-900 text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-blue-600 transition-all">
+                        Beli Tiket
+                    </a>
+                `;
+            }
+
             // Hitung harga terendah
             const prices = event.categories.map(c => parseInt(c.price));
             const minPrice = Math.min(...prices);
@@ -210,22 +235,7 @@
 
             grid.innerHTML += `
                 <div class="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-gray-100 relative group">
-                    {% if role == 'ADMIN' or role == 'ORGANIZER' %}
-                    <div class="absolute top-4 right-4 z-10 flex items-center gap-2">
-                        <button onclick="editEvent(${index})"
-                            class="bg-white/90 backdrop-blur text-blue-600 px-4 py-2 rounded-full shadow-md hover:bg-blue-600 hover:text-white transition-all text-xs font-bold flex items-center gap-2">
-                            <i class="fas fa-edit"></i>
-                            Edit
-                        </button>
-
-                        <button onclick="openDeleteModal(${index})"
-                            class="bg-white/90 backdrop-blur text-red-600 px-4 py-2 rounded-full shadow-md hover:bg-red-600 hover:text-white transition-all text-xs font-bold flex items-center gap-2">
-                            <i class="fas fa-trash-alt"></i>
-                            Hapus
-                        </button>
-                    </div>
-
-                    {% endif %}
+                    ${managementButtons}
 
                     <div class="h-48 bg-gray-200 overflow-hidden relative">
                         <img src="https://images.unsplash.com/photo-1459749411177-042180ce673c?auto=format&fit=crop&w=800" class="w-full h-full object-cover">
@@ -465,7 +475,10 @@
         document.getElementById('inputDate').value = event.date;
         document.getElementById('inputTime').value = event.time;
         document.getElementById('inputVenue').value = event.venue;
-
+        document.querySelectorAll('.artist-checkbox').forEach(cb => {
+            cb.checked = event.artists.includes(cb.parentElement.innerText.trim());
+        });
+        
         // Render Kategori ke form
         const wrapper = document.getElementById('categoryWrapper');
         wrapper.innerHTML = '';

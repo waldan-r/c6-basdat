@@ -375,7 +375,8 @@ def seats_view(request):
 
 def list_event(request):
     role = request.session.get('role', 'GUEST')
-    
+    user_id = request.session.get('user_id', '0')
+
     if request.method == 'POST':
         try:
             data = json.loads(request.body)
@@ -400,11 +401,25 @@ def list_event(request):
                             return JsonResponse({'status': 'error', 'message': 'Venue tidak ditemukan'}, status=404)
                         venue_id_target = venue_row['venue_id']
                         
-                        # Ambil organizer pertama sebagai default (Sama seperti Organizer.objects.first())
-                        cursor.execute("SELECT organizer_id FROM organizer LIMIT 1")
-                        org_row = fetchone(cursor)
-                        organizer_id_target = org_row['organizer_id'] if org_row else None
-
+                        # Jika role adalah ORGANIZER, gunakan user_id miliknya langsung sebagai organizer_id
+                        if role == 'ORGANIZER':
+                            # Ambil organizer_id dari tabel organizer berdasarkan user_id yang sedang login
+                            cursor.execute("SELECT organizer_id FROM organizer WHERE user_id = %s LIMIT 1", [user_id])
+                            org_row = fetchone(cursor)
+                            if not org_row:
+                                return JsonResponse({'status': 'error', 'message': 'Profil Organizer tidak ditemukan.'}, status=404)
+                            organizer_id_target = org_row['organizer_id']
+                        elif role == 'ADMIN':
+                            # Jika ADMIN yang membuat, ambil organizer_id yang dikirim dari form frontend
+                            # Jika frontend tidak mengirimkannya, baru gunakan fallback ambil data pertama
+                            organizer_id_target = data.get('organizer_id')
+                            if not organizer_id_target:
+                                cursor.execute("SELECT organizer_id FROM organizer LIMIT 1")
+                                org_row = fetchone(cursor)
+                                organizer_id_target = org_row['organizer_id'] if org_row else None
+                        else:
+                            return JsonResponse({'status': 'error', 'message': 'Akses ditolak'}, status=403)
+                        
                         final_event_id = event_id if action == 'UPDATE' else str(uuid.uuid4())
                         event_datetime = f"{data.get('date')} {data.get('time')}"
 
@@ -453,7 +468,7 @@ def list_event(request):
 
     # Struktur query dasar
     base_query = """
-        SELECT e.event_id, e.event_title, e.event_datetime, v.venue_name, v.venue_id
+        SELECT e.event_id, e.event_title, e.event_datetime, e.organizer_id, v.venue_name, v.venue_id
         FROM event e
         JOIN venue v ON v.venue_id = e.venue_id
     """
@@ -517,6 +532,7 @@ def list_event(request):
                 'date': row['event_datetime'].strftime('%Y-%m-%d') if row['event_datetime'] else '',
                 'time': row['event_datetime'].strftime('%H:%M') if row['event_datetime'] else '',
                 'venue': row['venue_name'],
+                'organizer_id': str(row['organizer_id']) if row['organizer_id'] else '',
                 'artists': artists_list,
                 'categories': [{'name': c['category_name'], 'price': int(c['price']), 'stock': c['quota']} for c in cats],
                 'min_price': int(min_p)
@@ -529,8 +545,20 @@ def list_event(request):
         cursor.execute("SELECT artist_id, name FROM artist ORDER BY name")
         all_artists = fetchall(cursor)
 
+    # Default ID yang dikirim ke JS adalah user_id dari session
+    js_user_id = user_id 
+    
+    # Jika role-nya adalah ORGANIZER, kita konversi id-nya menjadi organizer_id
+    if role == 'ORGANIZER':
+        with db_cursor() as cursor:
+            cursor.execute("SELECT organizer_id FROM organizer WHERE user_id = %s LIMIT 1", [user_id])
+            org_row = fetchone(cursor)
+            if org_row:
+                js_user_id = org_row['organizer_id']
+
     context = {
         'role': role,
+        'current_user_id': js_user_id,
         'events_js': json.dumps(events_data, default=str), 
         'venues': all_venues,
         'artists': all_artists,
