@@ -198,7 +198,7 @@ def dashboard_view(request):
 def artist_list_view(request):
     with db_cursor() as cursor:
         cursor.execute("SELECT * FROM artist")
-        artists = dictfetchall(cursor)
+        artists = fetchall(cursor)
         
     context = {
         'artists': artists,
@@ -259,7 +259,7 @@ def artist_manage_view(request):
 
     with db_cursor() as cursor:
         cursor.execute("SELECT * FROM artist")
-        artists = dictfetchall(cursor)
+        artists = fetchall(cursor)
 
     context = {
         'artists': artists,
@@ -387,7 +387,7 @@ def ticket_category_manage_view(request):
             JOIN event e ON tc.event_id = e.event_id
             ORDER BY e.event_title, tc.category_name
         """)
-        categories = dictfetchall(cursor)
+        categories = fetchall(cursor)
         
         cursor.execute("""
             SELECT e.event_id, e.event_title, v.capacity
@@ -395,7 +395,7 @@ def ticket_category_manage_view(request):
             JOIN venue v ON v.venue_id = e.venue_id
             ORDER BY e.event_title
         """)
-        events = dictfetchall(cursor)
+        events = fetchall(cursor)
         
     context = {
         'categories': categories,
@@ -859,7 +859,7 @@ def ticket_view(request: HttpRequest):
             
             cursor.execute(base_query, params)
             # print(cursor.description)
-            tickets = dictfetchall(cursor)
+            tickets = fetchall(cursor)
 
             statuses = ["PENDING", "PAID", "CANCELLED"]
 
@@ -878,7 +878,7 @@ def ticket_view(request: HttpRequest):
                     order by o.order_date desc
                     """
                 )
-                orders_options = dictfetchall(cursor)
+                orders_options = fetchall(cursor)
 
                 if role == 'ORGANIZER':
                     cursor.execute(
@@ -893,7 +893,7 @@ def ticket_view(request: HttpRequest):
                     )
                 else:
                     cursor.execute("select * from event order by event_datetime")
-                events_options = dictfetchall(cursor)
+                events_options = fetchall(cursor)
 
                 category_params = []
                 category_where = ""
@@ -920,7 +920,7 @@ def ticket_view(request: HttpRequest):
                     """,
                     category_params,
                 )
-                categories_options = dictfetchall(cursor)
+                categories_options = fetchall(cursor)
 
                 seat_params = []
                 seat_where = ""
@@ -944,7 +944,7 @@ def ticket_view(request: HttpRequest):
                     """,
                     seat_params,
                 )
-                seats_options = dictfetchall(cursor)
+                seats_options = fetchall(cursor)
 
             context = {
                 'tickets': tickets,
@@ -969,5 +969,5 @@ def seats_view(request):
             ORDER BY v.venue_name, s.section, s.row_number, s.seat_number
             """
         )
-        seats = dictfetchall(cursor)
+        seats = fetchall(cursor)
     return render(request, 'seats.html', {'seats': seats})
