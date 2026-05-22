@@ -37,13 +37,21 @@
                     <select name="venue" class="flex-1 py-3 px-4 bg-gray-100 rounded-xl outline-none">
                         <option value="">Semua Venue</option>
                         {% for v in venues %}
+<<<<<<< HEAD
                         <option value="{{ v.venue_id }}" {% if request.GET.venue == v.venue_id|stringformat:"s" %}selected{% endif %}>{{ v.venue_name }}</option>
+=======
+                        <option value="{{ v.id }}" {% if request.GET.venue == v.id|stringformat:"s" %}selected{% endif %}>{{ v.name }}</option>
+>>>>>>> 78abb552e99a9459e256096bcccdda134484d342
                         {% endfor %}
                     </select>
                     <select name="artist" class="flex-1 py-3 px-4 bg-gray-100 rounded-xl outline-none">
                         <option value="">Semua Artist</option>
                         {% for a in artists %}
+<<<<<<< HEAD
                         <option value="{{ a.artist_id }}" {% if request.GET.artist == a.artist_id|stringformat:"s" %}selected{% endif %}>{{ a.name }}</option>
+=======
+                        <option value="{{ a.id }}" {% if request.GET.artist == a.id|stringformat:"s" %}selected{% endif %}>{{ a.name }}</option>
+>>>>>>> 78abb552e99a9459e256096bcccdda134484d342
                         {% endfor %}
                     </select>
                     <button class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold transition duration-200">Cari</button>
@@ -188,8 +196,13 @@
 </div>
 
 <script>
+<<<<<<< HEAD
     // 1. STATE MANAGEMENT 
     let eventData = JSON.parse('{{ events_js|safe }}');
+=======
+    // 1. STATE MANAGEMENT (Konsep sama seperti venue.html agar tidak reset saat disubmit)
+    let eventData = JSON.parse('{{ events_json|escapejs }}');
+>>>>>>> 78abb552e99a9459e256096bcccdda134484d342
 
     const grid = document.getElementById('eventGrid');
 

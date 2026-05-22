@@ -1,0 +1,104 @@
+{% extends 'order_promo/layout.html' %}
+{% block content %}
+{% if msg %}
+<div class="alert alert-success">Data promosi berhasil diproses.</div>
+{% endif %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="page-title mb-1">Manajemen Promosi</h1>
+        <p class="text-muted mb-0">Create, update, dan delete data promotion.</p>
+    </div>
+    <a href="{% url 'order_promo:promotion_dashboard' %}?role={{ role|lower }}" class="btn btn-outline-secondary">Dashboard</a>
+</div>
+
+<div class="card p-4 mb-4">
+    <h2 class="section-title mb-3">Buat Promo</h2>
+    <form method="post" action="{% url 'order_promo:promotion_create' %}" class="row g-3">
+        {% csrf_token %}
+        <div class="col-md-2">
+            <label for="promo_code" class="form-label fw-semibold small text-muted">Kode</label>
+            <input id="promo_code" name="promo_code" class="form-control" required>
+        </div>
+        <div class="col-md-2">
+            <label for="discount_type" class="form-label fw-semibold small text-muted">Tipe</label>
+            <select id="discount_type" name="discount_type" class="form-select" required>
+                <option value="PERCENTAGE">PERCENTAGE</option>
+                <option value="NOMINAL">NOMINAL</option>
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label for="discount_value" class="form-label fw-semibold small text-muted">Nilai</label>
+            <input id="discount_value" type="number" step="0.01" min="0.01" name="discount_value" class="form-control" required>
+        </div>
+        <div class="col-md-2">
+            <label for="start_date" class="form-label fw-semibold small text-muted">Mulai</label>
+            <input id="start_date" type="date" name="start_date" class="form-control" required>
+        </div>
+        <div class="col-md-2">
+            <label for="end_date" class="form-label fw-semibold small text-muted">Berakhir</label>
+            <input id="end_date" type="date" name="end_date" class="form-control" required>
+        </div>
+        <div class="col-md-2">
+            <label for="usage_limit" class="form-label fw-semibold small text-muted">Limit</label>
+            <input id="usage_limit" type="number" min="1" name="usage_limit" class="form-control" required>
+        </div>
+        <div class="col-12">
+            <button class="btn btn-primary">Simpan Promo</button>
+        </div>
+    </form>
+</div>
+
+<div class="card overflow-hidden">
+    <div class="table-responsive">
+        <table class="table table-hover mb-0 align-middle">
+            <thead class="table-light">
+                <tr class="caption">
+                    <th class="ps-4 py-3">Kode</th>
+                    <th>Tipe</th>
+                    <th>Nilai</th>
+                    <th>Periode</th>
+                    <th>Penggunaan</th>
+                    <th class="text-center">Aksi</th>
+                </tr>
+            </thead>
+            <tbody class="small">
+                {% for promotion in promotions %}
+                <tr>
+                    <td class="ps-4 fw-bold text-primary">{{ promotion.promo_code }}</td>
+                    <td>{{ promotion.discount_type }}</td>
+                    <td class="fw-bold">{{ promotion.discount_display }}</td>
+                    <td>{{ promotion.start_date|date:"Y-m-d" }} s/d {{ promotion.end_date|date:"Y-m-d" }}</td>
+                    <td>{{ promotion.used_count }} / {{ promotion.usage_limit }}</td>
+                    <td class="text-center">
+                        <form method="post" action="{% url 'order_promo:promotion_update' %}" class="d-inline-flex gap-2 align-items-center">
+                            {% csrf_token %}
+                            <input type="hidden" name="promotion_id" value="{{ promotion.promotion_id }}">
+                            <input type="text" name="promo_code" value="{{ promotion.promo_code }}" class="form-control form-control-sm" aria-label="Kode promo" required>
+                            <select name="discount_type" class="form-select form-select-sm" aria-label="Tipe diskon" required>
+                                <option value="PERCENTAGE" {% if promotion.discount_type == 'PERCENTAGE' %}selected{% endif %}>PERCENTAGE</option>
+                                <option value="NOMINAL" {% if promotion.discount_type == 'NOMINAL' %}selected{% endif %}>NOMINAL</option>
+                            </select>
+                            <input type="number" step="0.01" min="0.01" name="discount_value" value="{{ promotion.discount_value }}" class="form-control form-control-sm" aria-label="Nilai diskon" required>
+                            <input type="date" name="start_date" value="{{ promotion.start_date|date:'Y-m-d' }}" class="form-control form-control-sm" aria-label="Tanggal mulai" required>
+                            <input type="date" name="end_date" value="{{ promotion.end_date|date:'Y-m-d' }}" class="form-control form-control-sm" aria-label="Tanggal selesai" required>
+                            <input type="number" min="1" name="usage_limit" value="{{ promotion.usage_limit }}" class="form-control form-control-sm" aria-label="Batas penggunaan" required>
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Update</button>
+                        </form>
+                        <form method="post" action="{% url 'order_promo:promotion_delete' %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="promotion_id" value="{{ promotion.promotion_id }}">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Hapus</button>
+                        </form>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">Belum ada promosi.</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}
