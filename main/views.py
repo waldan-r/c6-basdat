@@ -725,7 +725,7 @@ def seats_view(request):
 
 def ticket_view(request: HttpRequest):
     role = request.session.get('role', 'GUEST')
-    user_id = request.session.get('user_id', '0')
+    user_id = request.session.get('user_id')
     
     if role == 'GUEST': 
         return redirect("login")
@@ -750,8 +750,7 @@ def ticket_view(request: HttpRequest):
                 seat_id = request.POST.get('seat_id')
 
                 ticket_id = uuid.uuid4()
-                # TODO: kode tiket gen
-                ticket_code = f"TICK-{uuid.uuid4().hex[:8].upper()}"
+                ticket_code = f"TICK-{uuid.uuid4()}"
 
                 cursor.execute(
                     "insert into ticket (ticket_id, ticket_code, tcategory_id, torder_id) values (%s, %s, %s, %s) returning ticket_id",
@@ -806,8 +805,8 @@ def ticket_view(request: HttpRequest):
 
                 return redirect(redirect_url)
 
-    with connection.cursor() as cursor:
-        if request.method == "GET":
+    if request.method == "GET":
+        with connection.cursor() as cursor:
             ticket_filter = (request.GET.get('ticket_filter') or '').strip()
             status_filter = (request.GET.get('ticket_status') or '').strip()
 
@@ -817,9 +816,9 @@ def ticket_view(request: HttpRequest):
                 join ticket_category tc on tc.category_id = t.tcategory_id 
                 join event e on e.event_id = tc.event_id 
                 join orders o on o.order_id = t.torder_id 
-                join customer c on c.customer_id = o.customer_id 
-                left join has_relationship hr on hr.ticket_id = t.ticket_id 
-                left join seat s on s.seat_id = hr.seat_id
+                join customer c on c.customer_id = o.customer_id
+                left join (select ticket_id tid, seat_id from has_relationship) hr on tid = t.ticket_id
+                left join seat s on s.seat_id = hr.seat_id 
             """
 
             conditions = []
@@ -917,36 +916,102 @@ def ticket_view(request: HttpRequest):
             }
             return render(request, 'tickets.html', context)
     
-def seats_view(request):
+def seats_view(request: HttpRequest):
+    role = request.session.get('role', 'GUEST')
+    user_id = request.session.get('user_id')
+    
+    if role == "GUEST":
+        redirect("login")
+
+    if request.method == "POST":
+        action = request.POST.get('action')
+        is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest' or request.content_type == 'application/json'
+        try:
+            venue_id = request.POST.get('venue_id') or request.POST.get('venue')
+            section = (request.POST.get('section') or '').strip()
+            row_number = (request.POST.get('row_number') or '').strip()
+            seat_number = (request.POST.get('seat_number') or '').strip()
+            with transaction.atomic():
+                with db_cursor() as cursor:
+                    if action == 'create':
+                        if role not in ('ADMIN', 'ORGANIZER'):
+                            return JsonResponse({'status': 'error', 'message': 'Akses ditolak'}, status=403)
+                 
+                        cursor.execute(
+                            "INSERT INTO seat (seat_id, venue_id, section, row_number, seat_number) VALUES (%s, %s, %s, %s, %s)",
+                            [str(uuid.uuid4()), venue_id, section, row_number, seat_number],
+                        )
+
+                        if is_ajax:
+                            return JsonResponse({'status': 'success'})
+                        messages.success(request, 'Kursi berhasil dibuat')
+                        return redirect('seats')
+
+                    elif action == 'update':
+                        seat_id = request.POST.get('seat_id')
+
+                        cursor.execute(
+                            "UPDATE seat SET venue_id = %s, section = %s, row_number = %s, seat_number = %s WHERE seat_id = %s",
+                            [venue_id, section, row_number, seat_number, seat_id],
+                        )
+
+                        if is_ajax:
+                            return JsonResponse({'status': 'success'})
+                        messages.success(request, 'Kursi berhasil diperbarui')
+                        return redirect('seats')
+
+                    elif action == 'delete':
+                        seat_id = request.POST.get('seat_id')
+                        cursor.execute("DELETE FROM seat WHERE seat_id = %s", [seat_id])
+
+                        if is_ajax:
+                            return JsonResponse({'status': 'success'})
+                        messages.success(request, 'Kursi berhasil dihapus')
+                        return redirect('seats')
+
+                    else:
+                        return JsonResponse({'status': 'error', 'message': 'Action tidak valid'}, status=400)
+        except Exception as e:
+            msg = str(e).split("\n")[0]
+            if is_ajax:
+                return JsonResponse({'status': 'error', 'message': msg}, status=400)
+            messages.error(request, msg)
+            return redirect('seats')
+
     if request.method == "GET":
-        ticket_filter = (request.GET.get('ticket_filter') or '').strip()
-        status_filter = (request.GET.get('ticket_status') or '').strip()
+        with db_cursor() as cursor:
+            cursor.execute(
+                """
+                SELECT *
+                FROM seat s
+                JOIN venue v ON v.venue_id = s.venue_id
+                LEFT JOIN (select distinct seat_id as sid from has_relationship) hr ON hr.sid = s.seat_id
+                ORDER BY v.venue_name, s.section, s.row_number, s.seat_number
+                """
+            )
+            seats = fetchall(cursor)
+            seats_positions = [seat['venue_name'] + "-" + seat['section'] + "-" + str(seat['row_number']) + "-" + str(seat['seat_number']) for seat in seats]
 
-    with db_cursor() as cursor:
-        cursor.execute(
-            """
-            SELECT distinct s.seat_id, s.section, s.row_number, s.seat_number, v.venue_name, sid 
-            FROM seat s
-            JOIN venue v ON v.venue_id = s.venue_id 
-            left join (select distinct seat_id as sid from has_relationship) hr ON hr.sid = s.seat_id
-            ORDER BY v.venue_name, s.section, s.row_number, s.seat_number
-            """
-        )
-        seats = fetchall(cursor)
-        
-        cursor.execute("SELECT COUNT(*) FROM seat")
-        seats_count = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM seat")
+            seats_count = cursor.fetchone()[0]
 
-        cursor.execute("SELECT COUNT(*) FROM seat s WHERE s.seat_id NOT IN (SELECT hr.seat_id FROM has_relationship hr)")
-        seats_count_available = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM seat s WHERE s.seat_id NOT IN (SELECT hr.seat_id FROM has_relationship hr)")
+            seats_count_available = cursor.fetchone()[0]
 
-        cursor.execute("SELECT COUNT(*) FROM seat s WHERE s.seat_id IN (SELECT hr.seat_id FROM has_relationship hr)")
-        seats_count_occupied = cursor.fetchone()[0]
+            cursor.execute("SELECT COUNT(*) FROM seat s WHERE s.seat_id IN (SELECT hr.seat_id FROM has_relationship hr)")
+            seats_count_occupied = cursor.fetchone()[0]
 
-        context = {
-            'seats': seats,
-            'seats_count': seats_count,
-            'seats_count_available': seats_count_available,
-            'seats_count_occupied': seats_count_occupied
-        }
+            cursor.execute("SELECT venue_id, venue_name FROM venue ORDER BY venue_name")
+            venues = fetchall(cursor)
+
+            context = {
+                'seats': seats,
+                'seats_positions': seats_positions,
+                'seats_count': seats_count,
+                'seats_count_available': seats_count_available,
+                'seats_count_occupied': seats_count_occupied,
+                'venues': venues,
+                'role': role,
+                'user_id': user_id,
+            }
     return render(request, 'seats.html', context)

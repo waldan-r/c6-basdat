@@ -4,14 +4,26 @@
 
 {% block content %}
 
+{% if messages %}
+<div class="mb-4 space-y-2 max-w-6xl mx-auto px-4">
+    {% for message in messages %}
+    <div class="p-3 rounded-md border shadow-sm text-sm {% if 'success' in message.tags %}bg-green-50 border-green-200 text-green-800{% elif 'error' in message.tags %}bg-red-50 border-red-200 text-red-700{% else %}bg-blue-50 border-blue-200 text-blue-800{% endif %}">
+        {{ message }}
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
 <div class="max-w-6xl mx-auto bg-white p-8 rounded-xl shadow-md border border-gray-100">
         <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
                 <h1 class="text-2xl font-bold text-slate-900 mb-1">Manajemen Kursi</h1>
             </div>
+            {% if role != 'CUSTOMER' %}
             <button id="openModal" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center justify-center gap-2 shadow-sm">
                 Tambah Kursi
             </button>
+            {% endif %}
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -31,14 +43,13 @@
 
         <div class="flex flex-col md:flex-row gap-4 mb-8">
             <div class="relative flex-1">
-                <input type="text" placeholder="Cari" 
+                <input id="searchInput" type="text" placeholder="Cari Venue" 
                        class="w-full pl-7 pr-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all shadow-sm">
             </div>
-            <select class="px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm md:w-48">
-                <option>Semua</option>
-                <option>PLACEHOLDER</option>
-                <option>PLACEHOLDER</option>
-                <option>PLACEHOLDER</option>
+            <select id="statusFilter" name="status" class="px-4 py-3 rounded-xl border border-slate-200 bg-white text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-sm md:w-48">
+                <option value="">Semua</option>
+                <option value="available">Tersedia</option>
+                <option value="occupied">Terisi</option>
             </select>
         </div>
 
@@ -58,7 +69,7 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         {% for seat in seats %}
-                        <tr class="hover:bg-slate-50 transition-colors group">
+                        <tr class="hover:bg-slate-50 transition-colors group" data-seat-id="{{ seat.seat_id }}" data-venue-id="{{ seat.venue_id }}" {% if seat.sid %}data-status="occupied"{% else %}data-status="available"{% endif %}>
                             <td class="py-4 px-6 align-middle">
                                 <div class="flex items-center gap-3">
                                     <span class="font-bold text-slate-900">{{ seat.section }}</span>
@@ -91,6 +102,7 @@
                                 {% endif %}
                             </td>
                             
+                            {% if role != 'CUSTOMER' %}
                             <td class="py-4 px-6 align-middle">
                                 <div class="flex items-center justify-end gap-2">
                                     <button class="openUpdateModalBtn bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-5 py-2 rounded-xl text-sm font-medium transition-colors flex items-center gap-2">
@@ -101,6 +113,7 @@
                                     </button>
                                 </div>
                             </td>
+                            {% endif %}
                         </tr>
                         {% endfor %}
                     </tbody>
@@ -121,40 +134,44 @@
                 </button>
             </div>
 
-            <form action="#" method="POST" class="p-6 space-y-5">
+            <form action="" method="POST" id="createSeatForm" class="p-6 space-y-5">
                 {% csrf_token %}
-                
+                <input type="hidden" name="action" value="create">
+
                 <div>
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Venue</label>
-                    <select class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
-                        <option>Pilih Venue</option>
+                    <select name="venue_id" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
+                        <option value="" disabled selected hidden>Pilih Venue</option>
+                        {% for v in venues %}
+                        <option value="{{ v.venue_id }}">{{ v.venue_name }}</option>
+                        {% endfor %}
                     </select>
                 </div>
 
                 <div>
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Section</label>
-                    <input type="text" placeholder="WVIP"
+                    <input name="section" type="text" required
                         class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
                 </div>
                 
                 <div>
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Baris</label>
-                    <input type="text" placeholder="cth. A"
+                    <input name="row_number" type="text" required
                         class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
                 </div>
                 
                 <div>
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">No. Kursi</label>
-                    <input type="text" placeholder="cth. 1"
+                    <input name="seat_number" type="text"  required
                         class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
                 </div>
-        
+                <div id="createError" class="w-full text-sm text-red-700 hidden mt-1"></div>
                 <div class="flex flex-col-reverse sm:flex-row gap-3 pt-4">
                     <button type="button" id="closeModalBtn" class="flex-1 px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">
                         Batal
                     </button>
                     <button type="submit" class="flex-1 px-5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold text-sm hover:bg-blue-700 shadow-blue-200 shadow-lg transition-all">
-                        Buat Tiket
+                        Buat Kursi
                     </button>
                 </div>
             </form>
@@ -177,34 +194,40 @@
             </div>
 
             <!-- Menggunakan form yang sama dengan Create Modal -->
-            <form action="#" method="POST" class="p-6 space-y-5">
+            <form action="" method="POST" id="updateSeatForm" class="p-6 space-y-5">
                 {% csrf_token %}
-                
+                <input type="hidden" name="action" value="update">
+                <input type="hidden" name="seat_id" id="update_seat_id">
+                <input type="hidden" id="update_original_position" name="update_original_position" value="">
+
                 <div>
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Venue</label>
-                    <select class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
-                        <option>Pilih Venue</option>
+                    <select name="venue_id" id="update_venue_id" required class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
+                        <option value="" disabled selected hidden>Pilih Venue</option>
+                        {% for v in venues %}
+                        <option value="{{ v.venue_id }}">{{ v.venue_name }}</option>
+                        {% endfor %}
                     </select>
                 </div>
 
                 <div>
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Section</label>
-                    <input type="text" placeholder="WVIP"
+                    <input name="section" id="update_section" type="text"  required
                         class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
                 </div>
                 
                 <div>
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Baris</label>
-                    <input type="text" placeholder="cth. A"
+                    <input name="row_number" id="update_row_number" type="text" required
                         class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
                 </div>
                 
                 <div>
                     <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">No. Kursi</label>
-                    <input type="text" placeholder="cth. 1"
+                    <input name="seat_number" id="update_seat_number" type="text" required
                         class="w-full px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 focus:ring-2 focus:ring-blue-500 focus:bg-white outline-none transition-all text-sm">
                 </div>
-        
+                <div id="updateError" class="w-full text-sm text-red-700 hidden mt-1"></div>
                 <div class="flex flex-col-reverse sm:flex-row gap-3 pt-4">
                     <button type="button" id="closeUpdateBtn" class="flex-1 px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">
                         Batal
@@ -236,14 +259,17 @@
                         Apakah Anda yakin ingin menghapus kursi ini? Tindakan ini tidak dapat dibatalkan.
                 </p>
 
-                <div class="flex flex-col sm:flex-row gap-3">
+                <form action="" method="POST" id="deleteSeatForm" class="flex flex-col sm:flex-row gap-3">
+                    {% csrf_token %}
+                    <input type="hidden" name="action" value="delete">
+                    <input type="hidden" name="seat_id" id="delete_seat_id">
                     <button type="button" id="closeDeleteBtn" class="flex-1 px-5 py-2.5 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors">
                         Batal
                     </button>
-                    <button type="button" class="flex-1 px-5 py-2.5 rounded-xl bg-red-600 text-white font-semibold text-sm hover:bg-red-700 shadow-red-200 shadow-lg transition-all">
+                    <button type="submit" class="flex-1 px-5 py-2.5 rounded-xl bg-red-600 text-white font-semibold text-sm hover:bg-red-700 shadow-red-200 shadow-lg transition-all">
                         Ya, Hapus
                     </button>
-                </div>
+                </form>
             </div>
         </div>
     </div>
@@ -260,7 +286,11 @@
         document.body.classList.toggle('overflow-hidden');
     };
 
-    if(openBtn) openBtn.addEventListener('click', toggleModal);
+    if(openBtn) openBtn.addEventListener('click', () => {
+        const createForm = document.getElementById('createSeatForm');
+        if (createForm) createForm.reset();
+        toggleModal();
+    });
     if(closeBtnX) closeBtnX.addEventListener('click', toggleModal);
     if(closeBtnBtn) closeBtnBtn.addEventListener('click', toggleModal);
 
@@ -281,7 +311,35 @@
     };
 
     openUBtns.forEach(btn => {
-        btn.addEventListener('click', toggleUpdateModal);
+        btn.addEventListener('click', (e) => {
+            const tr = btn.closest('tr');
+            if (!tr) return toggleUpdateModal();
+            const seatId = tr.dataset.seatId;
+            const venueId = tr.dataset.venueId;
+            const section = tr.querySelector('td:nth-child(1) .font-bold')?.innerText.trim() || '';
+            const rowNumber = tr.querySelector('td:nth-child(2)')?.innerText.trim() || '';
+            const seatNumber = tr.querySelector('td:nth-child(3)')?.innerText.trim() || '';
+
+            const seatIdInput = document.getElementById('update_seat_id');
+            const venueInput = document.getElementById('update_venue_id');
+            const sectionInput = document.getElementById('update_section');
+            const rowInput = document.getElementById('update_row_number');
+            const seatInput = document.getElementById('update_seat_number');
+
+            if (seatIdInput) seatIdInput.value = seatId || '';
+            if (venueInput) venueInput.value = venueId || '';
+            if (sectionInput) sectionInput.value = section;
+            if (rowInput) rowInput.value = rowNumber;
+            if (seatInput) seatInput.value = seatNumber;
+
+            // store original position so client-side validator can allow unchanged positions
+            const venueNameText = tr.querySelector('td:nth-child(4) .text-sm')?.innerText.trim() || '';
+            const originalPos = `${venueNameText}-${section}-${rowNumber}-${seatNumber}`;
+            const hiddenOriginal = document.getElementById('update_original_position');
+            if (hiddenOriginal) hiddenOriginal.value = originalPos;
+
+            toggleUpdateModal();
+        });
     });
     if(closeUX) closeUX.addEventListener('click', toggleUpdateModal);
     if(closeUBtn) closeUBtn.addEventListener('click', toggleUpdateModal);
@@ -302,7 +360,13 @@
     };
 
     openDBtns.forEach(btn => {
-        btn.addEventListener('click', toggleDeleteModal);
+        btn.addEventListener('click', (e) => {
+            const tr = btn.closest('tr');
+            const seatId = tr ? tr.dataset.seatId : null;
+            const deleteInput = document.getElementById('delete_seat_id');
+            if (deleteInput) deleteInput.value = seatId || '';
+            toggleDeleteModal();
+        });
     });
     if(closeDBtn) closeDBtn.addEventListener('click', toggleDeleteModal);
 
@@ -311,5 +375,114 @@
             toggleDeleteModal();
         }
     });
+    
+    const statusFilter = document.getElementById('statusFilter');
+    const searchInput = document.getElementById('searchInput');
+
+    function applyFilters() {
+        const status = statusFilter ? statusFilter.value : '';
+        const q = searchInput ? searchInput.value.trim().toLowerCase() : '';
+
+        document.querySelectorAll('tbody tr').forEach(tr => {
+            const rowStatus = tr.dataset.status || '';
+            let matchesStatus = !status || rowStatus === status;
+
+            let matchesQuery = true;
+            if (q) {
+                const text = tr.innerText.toLowerCase();
+                matchesQuery = text.includes(q);
+            }
+
+            tr.style.display = (matchesStatus && matchesQuery) ? '' : 'none';
+        });
+    }
+
+    if (statusFilter) statusFilter.addEventListener('change', applyFilters);
+    if (searchInput) searchInput.addEventListener('input', applyFilters);
+    // Build a map of existing seat positions -> seat_id for duplicate checks (constructed from DOM to avoid template escaping issues)
+    const seatsPositionsMap = {};
+    document.querySelectorAll('tbody tr').forEach(tr => {
+        const venueName = tr.querySelector('td:nth-child(4) .text-sm')?.innerText.trim() || '';
+        const section = tr.querySelector('td:nth-child(1) .font-bold')?.innerText.trim() || '';
+        const rowNum = tr.querySelector('td:nth-child(2)')?.innerText.trim() || '';
+        const seatNum = tr.querySelector('td:nth-child(3)')?.innerText.trim() || '';
+        const id = tr.dataset.seatId || '';
+        const posKey = `${venueName}-${section}-${rowNum}-${seatNum}`;
+        if (id) seatsPositionsMap[posKey] = id;
+    });
+
+    const createForm = document.getElementById('createSeatForm');
+    const updateForm = document.getElementById('updateSeatForm');
+    const createError = document.getElementById('createError');
+    const updateError = document.getElementById('updateError');
+
+    function clearError(el) {
+        if (!el) return;
+        el.classList.add('hidden');
+        el.innerText = '';
+    }
+
+    function showError(el, msg) {
+        if (!el) return alert(msg);
+        el.innerText = msg;
+        el.classList.remove('hidden');
+    }
+
+    if (createForm) {
+        createForm.addEventListener('submit', function(e) {
+            clearError(createError);
+            // Let HTML5 required attribute run first
+            if (!createForm.checkValidity()) return;
+
+            const venueSelect = createForm.querySelector('select[name="venue_id"]');
+            const venueName = venueSelect ? venueSelect.selectedOptions[0].text.trim() : '';
+            const section = (createForm.querySelector('input[name="section"]')?.value || '').trim();
+            const row = (createForm.querySelector('input[name="row_number"]')?.value || '').trim();
+            const seat = (createForm.querySelector('input[name="seat_number"]')?.value || '').trim();
+
+            const pos = `${venueName}-${section}-${row}-${seat}`;
+            if (seatsPositionsMap[pos]) {
+                e.preventDefault();
+                showError(createError, 'Kursi dengan posisi tersebut sudah ada di venue ini.');
+                return false;
+            }
+            return true;
+        });
+    }
+
+    
+    if (updateForm) {
+        updateForm.addEventListener('submit', function(e) {
+            clearError(updateError);
+            if (!updateForm.checkValidity()) return;
+
+            const venueSelect = updateForm.querySelector('select[name="venue_id"]');
+            const venueName = venueSelect ? venueSelect.selectedOptions[0].text.trim() : '';
+            const section = (updateForm.querySelector('input[name="section"]')?.value || '').trim();
+            const row = (updateForm.querySelector('input[name="row_number"]')?.value || '').trim();
+            const seat = (updateForm.querySelector('input[name="seat_number"]')?.value || '').trim();
+            const seatId = (updateForm.querySelector('input[name="seat_id"]')?.value || '').trim();
+            const pos = `${venueName}-${section}-${row}-${seat}`;
+
+            const hiddenOriginal = updateForm.querySelector('input[name="update_original_position"]')?.value || '';
+            // if nothing changed (position unchanged), just close modal silently
+            if (pos === hiddenOriginal) {
+                e.preventDefault();
+                toggleUpdateModal();
+                return false;
+            }
+
+            const existing = seatsPositionsMap[pos];
+            // allow if existing is the same seat being updated
+            if (existing && existing !== seatId) {
+                e.preventDefault();
+                showError(updateError, 'Kursi dengan posisi tersebut sudah ada di venue ini.');
+                return false;
+            }
+            return true;
+        });
+    }
+
+    applyFilters();
 </script>
 {% endblock %}
