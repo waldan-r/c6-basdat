@@ -90,7 +90,6 @@ postgres_options = dict(parse_qsl(tmpPostgres.query))
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-<<<<<<< HEAD
         'NAME': 'postgres',
         'USER': 'postgres.pvvnahdfsauhziiuqdkg', 
         'PASSWORD': 'postgresqlll',
@@ -99,14 +98,6 @@ DATABASES = {
         'OPTIONS': {
             'sslmode': 'require',
         },
-=======
-        'NAME': tmpPostgres.path.replace('/', ''),
-        'USER': tmpPostgres.username,
-        'PASSWORD': tmpPostgres.password,
-        'HOST': tmpPostgres.hostname,
-        'PORT': tmpPostgres.port or 5432,
-        'OPTIONS': postgres_options,
->>>>>>> 78abb552e99a9459e256096bcccdda134484d342
     }
 }
 

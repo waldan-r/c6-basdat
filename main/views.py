@@ -380,177 +380,255 @@ def list_event(request):
         try:
             data = json.loads(request.body)
             action = data.get('action')
+            event_id = data.get('event_id')
 
             with transaction.atomic(): 
-                if action == 'DELETE':
-                    event_id = data.get('event_id')
-
-                    try:
-                        event = Event.objects.get(event_id=event_id)
-                        event.delete()
-
-                        return JsonResponse({'status': 'success'})
-                    except Event.DoesNotExist:
-                        return JsonResponse({
-                            'status': 'error',
-                            'message': 'Event tidak ditemukan'
-                        }, status=404)
-                    
-                if action in ['CREATE', 'UPDATE']:
-                    # Cari Venue berdasarkan nama yang dikirim dari modal
-                    venue_obj = Venue.objects.get(venue_name=data.get('venue'))
-                    
-                    # Logika Create atau Update
-                    event_id = data.get('event_id') if action == 'UPDATE' else uuid.uuid4()
-                    
-                    event, created = Event.objects.update_or_create(
-                        event_id=event_id,
-                        defaults={
-                            'event_title': data.get('name'),
-                            'event_datetime': f"{data.get('date')} {data.get('time')}",
-                            'venue': venue_obj,
-                            'organizer': Organizer.objects.first() 
-                        }
-                    )
-
-                    # Simpan relasi artist
-                    EventArtist.objects.filter(event=event).delete()
-
-                    for artist_id in data.get('artists', []):
-                        artist_obj = Artist.objects.get(artist_id=artist_id)
-
-                        EventArtist.objects.create(
-                            event=event,
-                            artist=artist_obj,
-                            role='MAIN'
-                        )
+                with db_cursor() as cursor:
+                    if action == 'DELETE':
+                        # Hapus relasi anak terlebih dahulu agar tidak melanggar foreign key constraint
+                        cursor.execute("DELETE FROM event_artist WHERE event_id = %s", [event_id])
+                        cursor.execute("DELETE FROM ticket_category WHERE event_id = %s", [event_id])
+                        cursor.execute("DELETE FROM event WHERE event_id = %s", [event_id])
                         
-                    # Simpan Kategori Tiket 
-                    TicketCategory.objects.filter(event=event).delete()
-                    for cat in data.get('categories', []):
-                        TicketCategory.objects.create(
-                            category_id= uuid.uuid4(),
-                            category_name=cat['name'],
-                            price=cat['price'],
-                            quota=cat['stock'],
-                            event=event
+                        return JsonResponse({'status': 'success'})
+                        
+                    if action in ['CREATE', 'UPDATE']:
+                        # Cari venue_id berdasarkan nama venue yang dikirim modal
+                        cursor.execute("SELECT venue_id FROM venue WHERE venue_name = %s LIMIT 1", [data.get('venue')])
+                        venue_row = fetchone(cursor)
+                        if not venue_row:
+                            return JsonResponse({'status': 'error', 'message': 'Venue tidak ditemukan'}, status=404)
+                        venue_id_target = venue_row['venue_id']
+                        
+                        # Ambil organizer pertama sebagai default (Sama seperti Organizer.objects.first())
+                        cursor.execute("SELECT organizer_id FROM organizer LIMIT 1")
+                        org_row = fetchone(cursor)
+                        organizer_id_target = org_row['organizer_id'] if org_row else None
+
+                        final_event_id = event_id if action == 'UPDATE' else str(uuid.uuid4())
+                        event_datetime = f"{data.get('date')} {data.get('time')}"
+
+                        # Tiru gaya update_or_create dengan PostgreSQL UPSERT (ON CONFLICT)
+                        cursor.execute(
+                            """
+                            INSERT INTO event (event_id, event_title, event_datetime, venue_id, organizer_id)
+                            VALUES (%s, %s, %s, %s, %s)
+                            ON CONFLICT (event_id) 
+                            DO UPDATE SET 
+                                event_title = EXCLUDED.event_title,
+                                event_datetime = EXCLUDED.event_datetime,
+                                venue_id = EXCLUDED.venue_id,
+                                organizer_id = EXCLUDED.organizer_id
+                            """,
+                            [final_event_id, data.get('name'), event_datetime, venue_id_target, organizer_id_target]
                         )
+
+                        # Hapus & simpan ulang relasi artist
+                        cursor.execute("DELETE FROM event_artist WHERE event_id = %s", [final_event_id])
+                        for artist_id in data.get('artists', []):
+                            cursor.execute(
+                                "INSERT INTO event_artist (event_id, artist_id, role) VALUES (%s, %s, 'MAIN')",
+                                [final_event_id, artist_id]
+                            )
+                            
+                        # Hapus & simpan ulang Kategori Tiket 
+                        cursor.execute("DELETE FROM ticket_category WHERE event_id = %s", [final_event_id])
+                        for cat in data.get('categories', []):
+                            cursor.execute(
+                                """
+                                INSERT INTO ticket_category (category_id, category_name, price, quota, event_id)
+                                VALUES (%s, %s, %s, %s, %s)
+                                """,
+                                [str(uuid.uuid4()), cat['name'], Decimal(cat['price']), int(cat['stock']), final_event_id]
+                            )
 
             return JsonResponse({'status': 'success'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
+    # --- PROSES GET DATA (FILTER DAN SEARCHING) ---
     search_query = request.GET.get('q', '')
     venue_filter = request.GET.get('venue', '')
     artist_filter = request.GET.get('artist', '')
 
-    events_qs = Event.objects.select_related('venue')
+    # Struktur query dasar
+    base_query = """
+        SELECT e.event_id, e.event_title, e.event_datetime, v.venue_name, v.venue_id
+        FROM event e
+        JOIN venue v ON v.venue_id = e.venue_id
+    """
+    conditions = []
+    params = []
 
     if search_query:
-        events_qs = events_qs.filter(event_title__icontains=search_query)
+        conditions.append("e.event_title ILIKE %s")
+        params.append(f"%{search_query}%")
     if venue_filter:
-        events_qs = events_qs.filter(venue_id=venue_filter)
+        conditions.append("e.venue_id = %s")
+        params.append(venue_filter)
     if artist_filter:
-        ids = EventArtist.objects.filter(
-            artist=artist_filter
-        ).values_list('event', flat=True)
+        conditions.append("""
+            e.event_id IN (
+                SELECT event_id FROM event_artist WHERE artist_id = %s
+            )
+        """)
+        params.append(artist_filter)
 
-        events_qs = events_qs.filter(
-            event_id__in=ids
-        ).distinct()
+    if conditions:
+        base_query += " WHERE " + " AND ".join(conditions)
 
-    events_data = []
-    for e in events_qs:
-        cats = list(e.categories.values('category_name', 'price', 'quota'))
-        min_p = e.categories.aggregate(Min('price'))['price__min'] or 0
-        
-        events_data.append({
-            'id': e.event_id,
-            'name': e.event_title,
-            'date': e.event_datetime.strftime('%Y-%m-%d'),
-            'time': e.event_datetime.strftime('%H:%M'),
-            'venue': e.venue.venue_name,
-            'artists': [
-                ea.artist.name
-                for ea in EventArtist.objects.filter(event=e).select_related('artist')
-            ],
-            'categories': [{'name': c['category_name'], 'price': int(c['price']), 'stock': c['quota']} for c in cats],
-            'min_price': int(min_p)
-        })
+    with db_cursor() as cursor:
+        cursor.execute(base_query, params)
+        raw_events = fetchall(cursor)
+
+        events_data = []
+        for row in raw_events:
+            eid = row['event_id']
+
+            # Ambil daftar kategori tiket dan harga minimal untuk event ini
+            cursor.execute(
+                """
+                SELECT category_name, price, quota 
+                FROM ticket_category 
+                WHERE event_id = %s
+                """, [eid]
+            )
+            cats = fetchall(cursor)
+            
+            cursor.execute("SELECT MIN(price) AS min_price FROM ticket_category WHERE event_id = %s", [eid])
+            min_p_row = fetchone(cursor)
+            min_p = min_p_row['min_price'] if min_p_row and min_p_row['min_price'] else 0
+
+            # Ambil nama-nama artis yang berelasi dengan event ini
+            cursor.execute(
+                """
+                SELECT a.name 
+                FROM event_artist ea
+                JOIN artist a ON ea.artist_id = a.artist_id
+                WHERE ea.event_id = %s
+                """, [eid]
+            )
+            artists_list = [a['name'] for a in fetchall(cursor)]
+
+            # Bangun struktur data penampung agar sesuai dengan kebutuhan template JavaScript Anda
+            events_data.append({
+                'id': eid,
+                'name': row['event_title'],
+                'date': row['event_datetime'].strftime('%Y-%m-%d') if row['event_datetime'] else '',
+                'time': row['event_datetime'].strftime('%H:%M') if row['event_datetime'] else '',
+                'venue': row['venue_name'],
+                'artists': artists_list,
+                'categories': [{'name': c['category_name'], 'price': int(c['price']), 'stock': c['quota']} for c in cats],
+                'min_price': int(min_p)
+            })
+
+        # Mengambil opsi data dropdown untuk filter di halaman depan
+        cursor.execute("SELECT venue_id, venue_name FROM venue ORDER BY venue_name")
+        all_venues = fetchall(cursor)
+
+        cursor.execute("SELECT artist_id, name FROM artist ORDER BY name")
+        all_artists = fetchall(cursor)
 
     context = {
         'role': role,
         'events_js': json.dumps(events_data, default=str), 
-        'venues': Venue.objects.all(),
-        'artists': Artist.objects.all(),
+        'venues': all_venues,
+        'artists': all_artists,
     }
     return render(request, 'event.html', context)
 
 def list_venue(request):
     role = request.session.get('role', 'GUEST')
 
-    venues_qs = Venue.objects.all().order_by('venue_name')
+    with db_cursor() as cursor:
+        # 1. Ambil semua data venue
+        cursor.execute("""
+            SELECT venue_id, venue_name, address, city, capacity, has_reserved_seating 
+            FROM venue 
+            ORDER BY venue_name
+        """)
+        venues_qs = fetchall(cursor)
 
-    total_venue = venues_qs.count()
-    total_capacity = venues_qs.aggregate(total=Sum('capacity'))['total'] or 0
-    total_reserved = venues_qs.filter(has_reserved_seating=True).count()
+        # 2. Ambil data statistik/agregasi dalam satu query
+        cursor.execute("""
+            SELECT 
+                COUNT(*) AS total_venue,
+                COALESCE(SUM(capacity), 0) AS total_capacity,
+                COUNT(CASE WHEN has_reserved_seating = TRUE THEN 1 END) AS total_reserved
+            FROM venue
+        """)
+        stats = fetchone(cursor)
 
     context = {
         'venues': venues_qs,
         'role': role,
         'stats': {
-            'total_venue': total_venue,
-            'total_reserved': total_reserved,
-            'total_capacity': total_capacity,
+            'total_venue': stats['total_venue'],
+            'total_reserved': stats['total_reserved'],
+            'total_capacity': stats['total_capacity'],
         }
     }
 
     return render(request, 'venue.html', context)
-    
+
+
 def venue_manage_view(request):
     if request.method == 'POST':
         try:
             action = request.POST.get('action')
+            venue_id = request.POST.get('venue_id')
+            nama = request.POST.get('nama')
+            alamat = request.POST.get('alamat')
+            kota = request.POST.get('kota')
+            kapasitas = request.POST.get('kapasitas')
+            reserved = request.POST.get('reserved') == 'on'
 
-            if action == 'CREATE':
-                venue = Venue(
-                    venue_id=str(uuid.uuid4()),
-                    venue_name=request.POST.get('nama'),
-                    address=request.POST.get('alamat'),
-                    city=request.POST.get('kota'),
-                    capacity=int(request.POST.get('kapasitas')),
-                    has_reserved_seating=request.POST.get('reserved') == 'on'
-                )
-                venue.full_clean()   
-                venue.save()         
+            # Validasi manual pengganti full_clean() ORM
+            if action in ['CREATE', 'UPDATE']:
+                if not nama or not alamat or not kota or not kapasitas:
+                    return JsonResponse({'status': 'error', 'message': 'Semua field wajib diisi!'}, status=400)
+                if int(kapasitas) <= 0:
+                    return JsonResponse({'status': 'error', 'message': 'Kapasitas harus lebih dari 0!'}, status=400)
 
-            elif action == 'UPDATE':
-                venue = Venue.objects.get(pk=request.POST.get('venue_id'))
-                venue.venue_name = request.POST.get('nama')
-                venue.address = request.POST.get('alamat')
-                venue.city = request.POST.get('kota')
-                venue.capacity = int(request.POST.get('kapasitas'))
-                venue.has_reserved_seating = request.POST.get('reserved') == 'on'
-                venue.full_clean()
-                venue.save()
+            with transaction.atomic():
+                with db_cursor() as cursor:
+                    if action == 'CREATE':
+                        cursor.execute(
+                            """
+                            INSERT INTO venue (venue_id, venue_name, address, city, capacity, has_reserved_seating)
+                            VALUES (%s, %s, %s, %s, %s, %s)
+                            """,
+                            [str(uuid.uuid4()), nama, alamat, kota, int(kapasitas), reserved]
+                        )
 
-            elif action == 'DELETE':
-                try:
-                    venue = Venue.objects.get(venue_id=request.POST.get('venue_id'))
-                    venue.delete()
-                except ValidationError as e:  
-                    error_msg = e.messages[0] if hasattr(e, 'messages') else str(e)
-                    return JsonResponse({
-                        'status': 'error',
-                        'message': error_msg
-                    }, status=400)
-                
-            else:
-                return JsonResponse({'status': 'error', 'message': 'Action tidak valid'}, status=400)
+                    elif action == 'UPDATE':
+                        cursor.execute(
+                            """
+                            UPDATE venue 
+                            SET venue_name = %s, address = %s, city = %s, capacity = %s, has_reserved_seating = %s
+                            WHERE venue_id = %s
+                            """,
+                            [nama, alamat, kota, int(kapasitas), reserved, venue_id]
+                        )
+
+                    elif action == 'DELETE':
+                        # Cek apakah venue sedang digunakan oleh event apa pun (Foreign Key Check manual)
+                        cursor.execute("SELECT 1 FROM event WHERE venue_id = %s LIMIT 1", [venue_id])
+                        if cursor.fetchone():
+                            return JsonResponse({
+                                'status': 'error', 
+                                'message': 'Gagal menghapus! Venue ini sedang digunakan oleh sebuah event.'
+                            }, status=400)
+
+                        cursor.execute("DELETE FROM venue WHERE venue_id = %s", [venue_id])
+                    
+                    else:
+                        return JsonResponse({'status': 'error', 'message': 'Action tidak valid'}, status=400)
             
             return JsonResponse({'status': 'success'})
         except Exception as e:
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+            
     return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=405)
         
 def ticket_view(request: HttpRequest):

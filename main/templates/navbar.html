@@ -37,13 +37,8 @@
 
             {% elif request.session.role == 'CUSTOMER' %}
                 <li><a href="/dashboard" class="hover:text-blue-500">Dashboard</a></li>
-<<<<<<< HEAD
-                <li><a href="/tickets/" class="hover:text-blue-500">Tiket Saya</a></li>
-                <li><a href="/orders/my" class="hover:text-blue-500">Pesanan</a></li>
-=======
                 <li><a href="/tickets/my" class="hover:text-blue-500">Tiket Saya</a></li>
                 <li><a href="/orders-promo/my" class="hover:text-blue-500">Pesanan</a></li>
->>>>>>> 78abb552e99a9459e256096bcccdda134484d342
                 <li><a href="{% url 'list_event' %}" class="hover:text-blue-500">Cari Event</a></li>
                 <li><a href="/ticket-category" class="hover:text-blue-500">Kategori Tiket</a></li>
                 <li><a href="/promotions" class="hover:text-blue-500">Promosi</a></li>

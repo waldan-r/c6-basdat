@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -244,9 +243,3 @@ class OrderPromotion(models.Model):
     class Meta:
         db_table = 'order_promotion'
         managed = False
-=======
-"""Main app data is accessed with raw PostgreSQL queries.
-
-The schema is defined outside Django, so this app does not declare ORM models.
-"""
->>>>>>> 78abb552e99a9459e256096bcccdda134484d342
