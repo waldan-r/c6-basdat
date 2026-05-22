@@ -39,6 +39,14 @@ def rupiah(value):
 
 
 def get_customer_id(request):
+    session_user_id = request.session.get("user_id")
+    if request.session.get("role") == "CUSTOMER" and is_uuid(session_user_id):
+        with db_cursor() as cursor:
+            cursor.execute("SELECT customer_id FROM customer WHERE user_id = %s", [session_user_id])
+            row = cursor.fetchone()
+        if row:
+            return row[0]
+
     customer_id = request.POST.get("customer_id") or request.GET.get("customer_id")
     if is_uuid(customer_id):
         return customer_id
@@ -198,11 +206,18 @@ def create_order(event_id, category_id, customer_id, promo_code):
 
 
 def order_list(request):
-    role = request.GET.get("role", "customer").upper()
+    role = (request.session.get("role") or request.GET.get("role", "guest")).upper()
+
+    params = []
+    where_clause = ""
+    session_user_id = request.session.get("user_id")
+    if role == "CUSTOMER" and is_uuid(session_user_id):
+        where_clause = "WHERE c.user_id = %s"
+        params.append(session_user_id)
 
     with db_cursor() as cursor:
         cursor.execute(
-            """
+            f"""
             SELECT o.order_id, o.order_date, o.payment_status, o.total_amount,
                    c.full_name AS customer_name,
                    COALESCE(string_agg(DISTINCT p.promo_code, ', '), '-') AS promo_codes
@@ -210,9 +225,11 @@ def order_list(request):
             JOIN customer c ON c.customer_id = o.customer_id
             LEFT JOIN order_promotion op ON op.order_id = o.order_id
             LEFT JOIN promotion p ON p.promotion_id = op.promotion_id
+            {where_clause}
             GROUP BY o.order_id, o.order_date, o.payment_status, o.total_amount, c.full_name
             ORDER BY o.order_date DESC
-            """
+            """,
+            params,
         )
         orders = fetchall(cursor)
 
@@ -267,7 +284,7 @@ def promotion_dashboard(request):
 
 
 def promotion_context(request, title):
-    role = request.GET.get("role", "guest").upper()
+    role = (request.session.get("role") or request.GET.get("role", "guest")).upper()
 
     with db_cursor() as cursor:
         cursor.execute(

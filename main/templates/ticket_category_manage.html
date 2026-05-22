@@ -43,7 +43,7 @@
             <tbody class="text-gray-600 text-sm font-light">
                 {% for cat in categories %}
                 <tr class="border-b border-gray-200 hover:bg-gray-50">
-                    <td class="py-3 px-6">{{ cat.event.event_title }}</td>
+                    <td class="py-3 px-6">{{ cat.event_title }}</td>
                     <td class="py-3 px-6 font-semibold">{{ cat.category_name }}</td>
                     <td class="py-3 px-6">{{ cat.price }}</td>
                     <td class="py-3 px-6">{{ cat.quota }}</td>
@@ -52,7 +52,7 @@
                     {% if role == 'ADMIN' or role == 'ORGANIZER' %}
                     <td class="py-3 px-6 text-center">
                         <!-- tombol update -->
-                        <button onclick="openUpdateModal('{{ cat.category_id }}', '{{ cat.event.event_id }}', '{{ cat.category_name }}', '{{ cat.price }}', '{{ cat.quota }}')" class="text-blue-500 hover:text-blue-700 font-medium mr-3">
+                        <button onclick="openUpdateModal('{{ cat.category_id }}', '{{ cat.event_id }}', '{{ cat.category_name }}', '{{ cat.price }}', '{{ cat.quota }}')" class="text-blue-500 hover:text-blue-700 font-medium mr-3">
                             Update
                         </button>
                         <!-- tombol delete -->
@@ -91,7 +91,7 @@
                 <select name="event_id" id="eventSelect" required class="w-full px-4 py-2 border border-gray-300 rounded focus:ring-blue-500 focus:outline-none">
                     <option value="">-- Pilih Event --</option>
                     {% for ev in events %}
-                        <option value="{{ ev.event_id }}">{{ ev.event_title }} (Kapasitas: {{ ev.venue.capacity }})</option>
+                        <option value="{{ ev.event_id }}">{{ ev.event_title }} (Kapasitas: {{ ev.capacity }})</option>
                     {% endfor %}
                 </select>
             </div>

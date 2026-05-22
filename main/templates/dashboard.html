@@ -5,12 +5,12 @@
     <div class="bg-white rounded-xl shadow-sm p-10 border border-gray-100">
         <h1 class="text-4xl font-bold text-gray-800 mb-2">Hello, {{ username }}!</h1>
         <p class="text-gray-500 mb-8">You are currently logged in as a <span class="font-bold text-blue-600">{{ role }}</span>.</p>
-        
+
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div class="p-6 bg-blue-50 rounded-lg border border-blue-100">
                 <h3 class="font-bold text-blue-800">Quick Action</h3>
-                <p class="text-sm text-blue-600 mb-4">View your recent activities here.</p>
-                <a href="#" class="text-sm font-bold text-blue-700 hover:underline">View History →</a>
+                <p class="text-sm text-blue-600 mb-4">View your recent order activity here.</p>
+                <a href="{% url 'order_promo:order_list' %}" class="text-sm font-bold text-blue-700 hover:underline">View History -></a>
             </div>
         </div>
     </div>

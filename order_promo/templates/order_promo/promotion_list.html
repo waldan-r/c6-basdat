@@ -12,6 +12,7 @@
     <a href="{% url 'order_promo:promotion_dashboard' %}?role={{ role|lower }}" class="btn btn-outline-secondary">Dashboard</a>
 </div>
 
+{% if role == 'ADMIN' %}
 <div class="card p-4 mb-4">
     <h2 class="section-title mb-3">Buat Promo</h2>
     <form method="post" action="{% url 'order_promo:promotion_create' %}" class="row g-3">
@@ -48,6 +49,7 @@
         </div>
     </form>
 </div>
+{% endif %}
 
 <div class="card overflow-hidden">
     <div class="table-responsive">
@@ -59,7 +61,7 @@
                     <th>Nilai</th>
                     <th>Periode</th>
                     <th>Penggunaan</th>
-                    <th class="text-center">Aksi</th>
+                    {% if role == 'ADMIN' %}<th class="text-center">Aksi</th>{% endif %}
                 </tr>
             </thead>
             <tbody class="small">
@@ -70,6 +72,7 @@
                     <td class="fw-bold">{{ promotion.discount_display }}</td>
                     <td>{{ promotion.start_date|date:"Y-m-d" }} s/d {{ promotion.end_date|date:"Y-m-d" }}</td>
                     <td>{{ promotion.used_count }} / {{ promotion.usage_limit }}</td>
+                    {% if role == 'ADMIN' %}
                     <td class="text-center">
                         <form method="post" action="{% url 'order_promo:promotion_update' %}" class="d-inline-flex gap-2 align-items-center">
                             {% csrf_token %}
@@ -91,10 +94,11 @@
                             <button type="submit" class="btn btn-sm btn-outline-danger">Hapus</button>
                         </form>
                     </td>
+                    {% endif %}
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6" class="text-center text-muted py-4">Belum ada promosi.</td>
+                    <td colspan="{% if role == 'ADMIN' %}6{% else %}5{% endif %}" class="text-center text-muted py-4">Belum ada promosi.</td>
                 </tr>
                 {% endfor %}
             </tbody>

@@ -133,7 +133,7 @@
                         <div class="flex gap-2 bg-gray-50 p-3 rounded-xl border items-center">
                             <input type="text" placeholder="Nama Tiket" class="cat-name flex-1 bg-transparent outline-none text-sm" required>
                             <input type="number" placeholder="Harga" class="cat-price w-28 bg-transparent outline-none text-sm" required>
-                            <input type="number" placeholder="Jumlah" class="cat-price w-28 bg-transparent outline-none text-sm" required>
+                            <input type="number" placeholder="Jumlah" class="cat-stock w-28 bg-transparent outline-none text-sm" required>
                             <div class="w-8"></div>
                         </div>
                     </div>
@@ -190,8 +190,11 @@
 <script>
     // 1. STATE MANAGEMENT 
     let eventData = JSON.parse('{{ events_js|safe }}');
+<<<<<<< HEAD
     const currentRole = '{{ role }}';
     const currentUserId = '{{ current_user_id }}';
+=======
+>>>>>>> 5c160b95980fd73b879c19bab72ec98d2aad6a95
     const grid = document.getElementById('eventGrid');
 
     // 2. RENDER UI
@@ -270,9 +273,7 @@
                                 <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Mulai dari</p>
                                 <p class="text-lg font-extrabold text-gray-900">Rp ${minPrice.toLocaleString()}</p>
                             </div>
-                            <a href="/orders-promo/my" class="inline-block bg-gray-900 text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-blue-600 transition-all">
-                                Beli Tiket
-                            </a>
+                            <a href="{% url 'order_promo:checkout_order' %}?event_id=${event.id}" class="bg-gray-900 text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-blue-600 transition-all">Beli Tiket</a>
                         </div>
                     </div>
                 </div>
@@ -342,6 +343,7 @@
             <div class="flex gap-2 bg-gray-50 p-3 rounded-xl border items-center">
                 <input type="text" placeholder="Nama Tiket" class="cat-name flex-1 bg-transparent outline-none text-sm" required>
                 <input type="number" placeholder="Harga" class="cat-price w-28 bg-transparent outline-none text-sm" required>
+                <input type="number" placeholder="Jumlah" class="cat-stock w-28 bg-transparent outline-none text-sm" required>
                 <div class="w-8"></div>
             </div>
         `;
