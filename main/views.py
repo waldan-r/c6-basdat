@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from django.http import HttpRequest
 from django.shortcuts import render, redirect
 from django.http import JsonResponse
 from django.db import transaction
@@ -6,6 +7,8 @@ from django.contrib import messages
 from .models import EventArtist, HasRelationship, Orders, Seat, Ticket, UserAccount, AccountRole, Customer, Organizer, Role, Artist, TicketCategory, Event, Venue
 from django.db.models import Sum, Min, Q
 from django.db import connection
+from django.urls import reverse
+from urllib.parse import urlencode
 import uuid, json
 
 # Helper function to convert raw SQL tuples into dictionaries
@@ -533,45 +536,206 @@ def venue_manage_view(request):
     return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=405)
         
 def ticket_view(request):
-    role = request.session.get('role', 'GUEST')
-    
-    with connection.cursor() as cursor:
-        # fetch records
-        cursor.execute("SELECT * FROM ticket")
-        tickets = dictfetchall(cursor)
-        
-        cursor.execute("SELECT * FROM ticket_category WHERE category_id IN (SELECT tcategory_id FROM ticket)")
-        categories = dictfetchall(cursor)
-        
-        cursor.execute("SELECT * FROM event WHERE event_id IN (SELECT event_id FROM ticket_category)")
-        events = dictfetchall(cursor)
-        
-        cursor.execute("SELECT * FROM orders WHERE order_id IN (SELECT torder_id FROM ticket)")
-        order = dictfetchall(cursor)
-        
-        cursor.execute("SELECT * FROM customer WHERE customer_id IN (SELECT customer_id FROM orders)")
-        pelanggan = dictfetchall(cursor)
-        
-        cursor.execute("""
-            SELECT hr.ticket_id, s.*
-            FROM has_relationship hr
-            JOIN seat s ON hr.seat_id = s.seat_id
-        """)
-        seats = dictfetchall(cursor)
 
-    context = {
-        'tickets': tickets,
-        'events': events,
-        'categories': categories,
-        'pelanggan': pelanggan,
-        'order': order,
-        'seats': seats
-    }
+    with connection.cursor() as cursor:
+        cursor.execute("SELECT * FROM venue")
+        venues_list = dictfetchall(cursor)
+
+    return render(request, 'venues.html', {'venues': venues_list})
+
+def ticket_view(request: HttpRequest):
+    role = request.session.get('role', 'GUEST')
+    user_id = request.session.get('user_id', '0')
     
-    if role == 'CUSTOMER':
-        return render(request, 'my_tickets.html', context)
-    else:
-        return render(request, 'ticket_manage.html', context)
+    if role == 'GUEST': 
+        return redirect("login")
+
+    if request.method == "POST":
+        action = request.POST.get('action')
+        
+        filter_params = {}
+        if request.POST.get('ticket_filter'):
+            filter_params['ticket_filter'] = request.POST.get('ticket_filter')
+        if request.POST.get('ticket_status'):
+            filter_params['ticket_status'] = request.POST.get('ticket_status')
+            
+        redirect_url = reverse('tickets')
+        if filter_params:
+            redirect_url += '?' + urlencode(filter_params)
+        
+        with connection.cursor() as cursor:
+            if action == 'create' and role in ['ADMIN', 'ORGANIZER']:
+                order_id = request.POST.get('order_id')
+                category_id = request.POST.get('category_id')
+                seat_id = request.POST.get('seat_id')
+
+                ticket_id = uuid.uuid4()
+                # TODO: kode tiket gen
+                ticket_code = f"TICK-{uuid.uuid4().hex[:8].upper()}"
+
+                cursor.execute(
+                    "insert into ticket (ticket_id, ticket_code, tcategory_id, torder_id) values (%s, %s, %s, %s) returning ticket_id",
+                    [ticket_id, ticket_code, category_id, order_id]
+                )
+                new_ticket = cursor.fetchone()
+                
+                if new_ticket and seat_id:
+                    new_ticket_id = new_ticket[0]
+                    cursor.execute(
+                        "insert into has_relationship (ticket_id, seat_id) values (%s, %s)",
+                        [new_ticket_id, seat_id]
+                    )
+                
+                return redirect(redirect_url)
+
+            elif action == 'update' and role == 'ADMIN':
+                ticket_id = request.POST.get('ticket_id')
+                payment_status = request.POST.get('payment_status')
+                seat_id = request.POST.get('seat_id')
+
+                cursor.execute(
+                    "update orders set payment_status = %s where order_id = (select torder_id from ticket where ticket_id = %s)",
+                    [payment_status, ticket_id]
+                )
+
+                if seat_id:
+                    cursor.execute("select 1 from has_relationship where ticket_id = %s", [ticket_id])
+                    exists = cursor.fetchone()
+                    
+                    if exists:
+                        cursor.execute(
+                            "update has_relationship set seat_id = %s where ticket_id = %s",
+                            [seat_id, ticket_id]
+                        )
+                    else:
+                        cursor.execute(
+                            "insert into has_relationship (ticket_id, seat_id) values (%s, %s)",
+                            [ticket_id, seat_id]
+                        )
+                else:
+                    cursor.execute("delete from has_relationship where ticket_id = %s", [ticket_id])
+
+                return redirect(redirect_url)
+
+            elif action == 'delete' and role == 'ADMIN':
+                ticket_id = request.POST.get('ticket_id')
+
+                cursor.execute("delete from has_relationship where ticket_id = %s", [ticket_id])
+                
+                cursor.execute("delete from ticket where ticket_id = %s", [ticket_id])
+
+                return redirect(redirect_url)
+
+    with connection.cursor() as cursor:
+        if request.method == "GET":
+            ticket_filter = (request.GET.get('ticket_filter') or '').strip()
+            status_filter = (request.GET.get('ticket_status') or '').strip()
+
+            ##TODO: perlu sort keknya
+            base_query = """
+                select * from ticket t 
+                join ticket_category tc on tc.category_id = t.tcategory_id 
+                join event e on e.event_id = tc.event_id 
+                join orders o on o.order_id = t.torder_id 
+                join customer c on c.customer_id = o.customer_id 
+                left join has_relationship hr on hr.ticket_id = t.ticket_id 
+                left join seat s on s.seat_id = hr.seat_id
+            """
+
+            conditions = []
+            params = []
+            
+            if role == 'CUSTOMER':
+                conditions.append("c.customer_id = %s")
+                params.append(user_id)
+            elif role == 'ORGANIZER':
+                conditions.append("e.organizer_id = %s")
+                params.append(user_id)
+
+            if ticket_filter:
+                conditions.append("(lower(e.event_title) like lower(%s) or lower(t.ticket_code) like lower(%s))")
+                params.append(f"%{ticket_filter}%")
+                params.append(f"%{ticket_filter}%")
+
+            if status_filter:
+                conditions.append("o.payment_status = %s")
+                params.append(status_filter)
+
+            if conditions:
+                base_query += " where " + " and ".join(conditions)
+            
+            cursor.execute(base_query, params)
+            # print(cursor.description)
+            tickets = dictfetchall(cursor)
+
+            # TODO: Paid atau gmn
+            # cursor.execute("select distinct payment_status from orders")
+            # statuses = cursor.fetchall()
+            statuses = ["PAID", "PENDING", "REJECTED"]
+
+            orders_options = []
+            events_options = []
+            categories_options = []
+            seats_options = []
+            
+            if role in ('ADMIN', 'ORGANIZER'):
+                cursor.execute("select * from orders o join customer c on c.customer_id = o.customer_id")
+                orders_options = dictfetchall(cursor)
+                
+                events_options_query = f"select * from event{
+                    f" where organizer_id = {user_id}" if role == 'ORGANIZER' else ""}"
+
+                cursor.execute(events_options_query)
+                events_options = dictfetchall(cursor)
+                
+                categories_options_query = f"""
+                    select 
+                        tc.category_id, 
+                        tc.category_name, 
+                        e.event_title, 
+                        tc.event_id, 
+                        tc.price as harga, 
+                        tc.quota, 
+                        coalesce(count(t.ticket_id), 0) as terpakai
+                    from ticket_category tc 
+                    join {
+                        f"(select * from event where organizer_id = {user_id})" 
+                        if role == 'ORGANIZER' else "event"
+                    } e on tc.event_id = e.event_id
+                    left join ticket t on tc.category_id = t.tcategory_id
+                    group by tc.category_id, tc.category_name, e.event_title, tc.event_id, tc.price, tc.quota
+                    having coalesce(count(t.ticket_id), 0) < tc.quota
+                """
+                cursor.execute(categories_options_query)
+                categories_options = dictfetchall(cursor)
+                
+                seats_options_query = f"""
+                    select *,
+                        (select hr.ticket_id
+                         from has_relationship hr
+                         join ticket t on hr.ticket_id = t.ticket_id
+                         join ticket_category tc on t.tcategory_id = tc.category_id
+                         where hr.seat_id = s.seat_id and tc.event_id = e.event_id
+                         limit 1) as occupied_by_ticket_id
+                    from seat s 
+                    join event e on s.venue_id = e.venue_id
+                    {f" where e.organizer_id = {user_id}" if role == 'ORGANIZER' else ""}
+                """
+                cursor.execute(seats_options_query)
+                seats_options = dictfetchall(cursor)
+
+            context = {
+                'tickets': tickets,
+                'statuses': statuses,
+                'orders_options': orders_options,
+                'events_options': events_options,
+                'categories_options': categories_options,
+                'seats_options': seats_options,
+                'event_filter': ticket_filter,
+                'status_filter': status_filter,
+                'role': role
+            }
+            return render(request, 'tickets.html', context)
     
 def seats_view(request):
     with connection.cursor() as cursor:
