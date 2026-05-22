@@ -17,15 +17,15 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                 <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Total Kursi</p>
-                <p class="text-3xl font-bold text-slate-900">30</p>
+                <p class="text-3xl font-bold text-slate-900">{{seats_count}}</p>
             </div>
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                 <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Tersedia</p>
-                <p class="text-3xl font-bold text-slate-900">21</p>
+                <p class="text-3xl font-bold text-slate-900">{{seats_count_available}}</p>
             </div>
             <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
                 <p class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Terisi</p>
-                <p class="text-3xl font-bold text-slate-900">9</p>
+                <p class="text-3xl font-bold text-slate-900">{{seats_count_occupied}}</p>
             </div>
         </div>
 
@@ -80,9 +80,15 @@
                             </td>
                             
                             <td class="py-4 px-6 align-middle">
-                                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-green-50 text-green-600 text-[11px] font-bold tracking-wider uppercase">
-                                    Tersedia
-                                </span>
+                                {% if seat.sid %}
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-red-50 text-red-600 text-[11px] font-bold tracking-wider uppercase">
+                                        Terisi
+                                    </span>
+                                {% else %}
+                                    <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-green-50 text-green-600 text-[11px] font-bold tracking-wider uppercase">
+                                        Tersedia
+                                    </span>
+                                {% endif %}
                             </td>
                             
                             <td class="py-4 px-6 align-middle">
