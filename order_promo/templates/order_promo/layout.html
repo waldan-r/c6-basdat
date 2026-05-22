@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title|default:"TakTikTuk" }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #f9fafb; color: #1f2937; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        .navbar { background: #ffffff; border-bottom: 1px solid #e5e7eb; }
+        .navbar-brand { font-weight: 800; color: #0d6efd !important; }
+        .nav-link { color: #495057; font-size: .9rem; font-weight: 500; }
+        .card { border: 1px solid #e5e7eb; border-radius: 8px; box-shadow: 0 1px 2px rgba(0,0,0,.03); }
+        .page-title { font-size: 1.875rem; font-weight: 800; }
+        .section-title { font-size: 1.25rem; font-weight: 700; }
+        .caption { color: #6b7280; font-size: .75rem; font-weight: 700; letter-spacing: 0; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg sticky-top mb-4">
+    <div class="container">
+        <a class="navbar-brand" href="{% url 'order_promo:event_list' %}">TakTikTuk</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#orderNavbar">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="orderNavbar">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" href="{% url 'order_promo:event_list' %}">Events</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'order_promo:order_list' %}?role=admin">Order</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'order_promo:promotion_list' %}?role=admin">Promosi</a></li>
+                <li class="nav-item"><a class="nav-link" href="{% url 'order_promo:promotion_dashboard' %}?role=admin">Dashboard Promo</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+<main class="container pb-5">
+    {% block content %}{% endblock %}
+</main>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

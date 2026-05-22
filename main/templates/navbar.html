@@ -1,56 +1,52 @@
 <nav class="bg-white shadow-md border-b border-gray-200">
     <div class="max-auto px-6 py-3 flex justify-between items-center">
         <div class="text-xl font-bold text-blue-600">
-            <a href="/dashboard">TakTikTuk</a>
+            <a href="{% url 'dashboard' %}">TakTikTuk</a>
         </div>
         
         <ul class="flex space-x-4 items-center text-gray-700 font-medium">
 
             {% if request.session.role == 'ADMIN' %}
-                <li><a href="/dashboard" class="hover:text-blue-500">Dashboard</a></li>
+                <li><a href="{% url 'dashboard' %}" class="hover:text-blue-500">Dashboard</a></li>
                 <li><a href="{% url 'list_venue' %}" class="hover:text-blue-500">Manajemen Venue</a></li>
                 <li><a href="{% url 'list_event' %}" class="hover:text-blue-500">Manajemen Event</a></li>
-                <li><a href="/seats/manage" class="hover:text-blue-500">Manajemen Kursi</a></li>
-                <li><a href="/artists/" class="hover:text-blue-500">Artists</a></li>
-                <li><a href="/artists/manage" class="hover:text-blue-500">Manajemen Artist</a></li>
-                <li><a href="/ticket-category" class="hover:text-blue-500">Kategori Tiket</a></li>
-                <li><a href="/tickets/" class="hover:text-blue-500">Manajemen Tiket</a></li>
-                <li><a href="/orders/all" class="hover:text-blue-500">Semua Order</a></li>
-                <li><a href="/assets/tickets" class="hover:text-blue-500">Tiket </a></li>
-                <li><a href="/assets/orders" class="hover:text-blue-500">Order </a></li>
-                <li><a href="/profile" class="hover:text-blue-500">Profile</a></li>
+                <li><a href="{% url 'seats' %}" class="hover:text-blue-500">Manajemen Kursi</a></li>
+                <li><a href="{% url 'artist_list' %}" class="hover:text-blue-500">Artists</a></li>
+                <li><a href="{% url 'artist_manage' %}" class="hover:text-blue-500">Manajemen Artist</a></li>
+                <li><a href="{% url 'ticket_category_manage' %}" class="hover:text-blue-500">Kategori Tiket</a></li>
+                <li><a href="{% url 'tickets' %}" class="hover:text-blue-500">Manajemen Tiket</a></li>
+                <li><a href="{% url 'order_promo:order_list' %}?role=admin" class="hover:text-blue-500">Semua Order</a></li>
+                <li><a href="{% url 'order_promo:promotion_list' %}?role=admin" class="hover:text-blue-500">Promosi</a></li>
                  <li><a href="{% url 'logout' %}" class="text-gray-400 hover:text-red-500">Logout</a></li>
 
             {% elif request.session.role == 'ORGANIZER' %}
-                <li><a href="/dashboard" class="hover:text-blue-500">Dashboard</a></li>
+                <li><a href="{% url 'dashboard' %}" class="hover:text-blue-500">Dashboard</a></li>
                 <li><a href="{% url 'list_event' %}" class="hover:text-blue-500">Event Saya</a></li>
-                <li><a href="/artists" class="hover:text-blue-500">Artists</a></li>
+                <li><a href="{% url 'artist_list' %}" class="hover:text-blue-500">Artists</a></li>
                 <li><a href="{% url 'list_venue' %}" class="hover:text-blue-500">Manajemen Venue</a></li>
-                <li><a href="/seats/manage" class="hover:text-blue-500">Manajemen Kursi</a></li>
-                <li><a href="/ticket-category" class="hover:text-blue-500">Kategori Tiket</a></li>
-                <li><a href="/tickets/" class="hover:text-blue-500">Manajemen Tiket</a></li>
-                <li><a href="/orders/all" class="hover:text-blue-500">Semua Order</a></li>
-                <li><a href="/assets/tickets" class="hover:text-blue-500">Tiket</a></li>
-                <li><a href="/assets/orders" class="hover:text-blue-500">Order</a></li>
-                <li><a href="/profile" class="hover:text-blue-500">Profile</a></li>
+                <li><a href="{% url 'seats' %}" class="hover:text-blue-500">Manajemen Kursi</a></li>
+                <li><a href="{% url 'ticket_category_manage' %}" class="hover:text-blue-500">Kategori Tiket</a></li>
+                <li><a href="{% url 'tickets' %}" class="hover:text-blue-500">Manajemen Tiket</a></li>
+                <li><a href="{% url 'order_promo:order_list' %}?role=admin" class="hover:text-blue-500">Semua Order</a></li>
+                <li><a href="{% url 'order_promo:promotion_list' %}?role=admin" class="hover:text-blue-500">Promosi</a></li>
                  <li><a href="{% url 'logout' %}" class="text-gray-400 hover:text-red-500">Logout</a></li>
 
             {% elif request.session.role == 'CUSTOMER' %}
-                <li><a href="/dashboard" class="hover:text-blue-500">Dashboard</a></li>
-                <li><a href="/tickets/" class="hover:text-blue-500">Tiket Saya</a></li>
-                <li><a href="/orders/my" class="hover:text-blue-500">Pesanan</a></li>
-                <li><a href="{% url 'list_event' %}" class="hover:text-blue-500">Cari Event</a></li>
-                <li><a href="/ticket-category" class="hover:text-blue-500">Kategori Tiket</a></li>
-                <li><a href="/promotions" class="hover:text-blue-500">Promosi</a></li>
+                <li><a href="{% url 'dashboard' %}" class="hover:text-blue-500">Dashboard</a></li>
+                <li><a href="{% url 'tickets' %}" class="hover:text-blue-500">Tiket Saya</a></li>
+                <li><a href="{% url 'order_promo:order_list' %}" class="hover:text-blue-500">Pesanan</a></li>
+                <li><a href="{% url 'order_promo:event_list' %}" class="hover:text-blue-500">Cari Event</a></li>
+                <li><a href="{% url 'ticket_category_manage' %}" class="hover:text-blue-500">Kategori Tiket</a></li>
+                <li><a href="{% url 'order_promo:promotion_list' %}" class="hover:text-blue-500">Promosi</a></li>
                 <li><a href="{% url 'list_venue' %}" class="hover:text-blue-500">Venue</a></li>
-                <li><a href="/artists" class="hover:text-blue-500">Artis</a></li>
+                <li><a href="{% url 'artist_list' %}" class="hover:text-blue-500">Artis</a></li>
                 <li><a href="{% url 'logout' %}" class="text-gray-400 hover:text-red-500">Logout</a></li>
 
             {% else %}
-                <li><a href="/ticket-category" class="hover:text-blue-500">Kategori Tiket</a></li>
-                <li><a href="/artists" class="hover:text-blue-500">Artis</a></li>
+                <li><a href="{% url 'ticket_category_manage' %}" class="hover:text-blue-500">Kategori Tiket</a></li>
+                <li><a href="{% url 'artist_list' %}" class="hover:text-blue-500">Artis</a></li>
                 <li><a href="{% url 'login' %}" class="hover:text-blue-500">Login</a></li>
-                <li><a href="/register" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">Registrasi</a></li>
+                <li><a href="{% url 'register' %}" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">Registrasi</a></li>
             {% endif %}
 
         </ul>

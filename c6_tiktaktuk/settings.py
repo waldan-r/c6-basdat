@@ -14,21 +14,25 @@ from pathlib import Path
 
 import os
 from dotenv import load_dotenv
-# Load environment variables from .env file
+import environ
 load_dotenv()
+from urllib.parse import urlparse, parse_qsl
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
+env = environ.Env(
+    DEBUG=(bool, False)
+)
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-98ljn@k^#6_4n_ri=qgex5*8b#&yj2s#(h@py2^p*(=7kg!9bd'
+environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
+SECRET_KEY = env('SECRET_KEY')
+DEBUG = env('DEBUG')
 
-# SECURITY WARNING: don't run with debug turned on in production!
+
+
 PRODUCTION = os.getenv('PRODUCTION', 'False').lower() == 'true'
-DEBUG = True
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
 
@@ -43,7 +47,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'main',
-    'order_waldan',
+    'order_promo',
 ]
 
 MIDDLEWARE = [
@@ -80,6 +84,9 @@ WSGI_APPLICATION = 'c6_tiktaktuk.wsgi.application'
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 # database
+tmpPostgres = urlparse(os.getenv("DATABASE_URL"))
+postgres_options = dict(parse_qsl(tmpPostgres.query))
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -90,6 +97,7 @@ DATABASES = {
         'PORT': '5432', 
         'OPTIONS': {
             'sslmode': 'require',
+            'options': '-c search_path=tiktaktuk,public',
         },
     }
 }

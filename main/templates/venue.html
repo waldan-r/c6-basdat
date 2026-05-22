@@ -44,33 +44,35 @@
     <!-- Container Utama -->
     <div id="containerVenue" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         
-        <!-- Contoh Venue 1 (GBK) -->
-        <div id="venue-1" class="venue-card group bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
+        {% for venue in venues %}
+        <div id="venue-{{ venue.venue_id }}" class="venue-card group bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-xl transition-all duration-300">
             <div class="relative h-52 overflow-hidden">
                 <img src="https://images.unsplash.com/photo-1517457373958-b7bdd4587205?auto=format&fit=crop&w=500" class="w-full h-full object-cover">
                 <div class="absolute top-4 right-4">
-                    <!-- Pastikan ada class 'label-seating' -->
-                    <span id="label-venue-1" class="bg-blue-600 text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg shadow-lg label-seating">
-                        Reserved Seating
+                    <span id="label-venue-{{ venue.venue_id }}" class="{% if venue.has_reserved %}bg-blue-600{% else %}bg-gray-500{% endif %} text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg shadow-lg label-seating">
+                        {% if venue.has_reserved %}Reserved Seating{% else %}Free Seating{% endif %}
                     </span>
                 </div>
             </div>
             <div class="p-6">
-                <h5 class="venue-nama text-xl font-bold text-gray-800 mb-2">Stadion Utama GBK</h5>
-                <p class="venue-alamat text-gray-500 text-sm mb-4 leading-relaxed">Jl. Pintu Satu Senayan, Jakarta Pusat</p>
+                <h5 class="venue-nama text-xl font-bold text-gray-800 mb-2">{{ venue.venue_name }}</h5>
+                <p class="venue-alamat text-gray-500 text-sm mb-4 leading-relaxed">{{ venue.address }}, {{ venue.city }}</p>
                 <div class="flex items-center text-gray-700 font-semibold mb-6">
                     <i class="fas fa-users mr-2 text-blue-500"></i>
-                    <span>Kapasitas: <span class="venue-kapasitas text-blue-600">77.193</span></span>
+                    <span>Kapasitas: <span class="venue-kapasitas text-blue-600">{{ venue.capacity }}</span></span>
                 </div>
                 
                 <div class="flex gap-3 border-t border-gray-50 pt-5">
                     {% if role == 'ADMIN' or role == 'ORGANIZER' %}
-                        <button onclick="prepareUpdate('venue-1')" class="flex-1 border-2 border-amber-400 text-amber-600 hover:bg-amber-400 hover:text-white font-bold py-2 rounded-xl transition-all text-sm">Edit</button>
-                        <button onclick="prepareDelete('venue-1', 'Stadion Utama GBK')" class="flex-1 border-2 border-red-400 text-red-600 hover:bg-red-400 hover:text-white font-bold py-2 rounded-xl transition-all text-sm">Hapus</button>
+                        <button onclick="prepareUpdate('venue-{{ venue.venue_id }}')" class="flex-1 border-2 border-amber-400 text-amber-600 hover:bg-amber-400 hover:text-white font-bold py-2 rounded-xl transition-all text-sm">Edit</button>
+                        <button onclick="prepareDelete('venue-{{ venue.venue_id }}', '{{ venue.venue_name|escapejs }}')" class="flex-1 border-2 border-red-400 text-red-600 hover:bg-red-400 hover:text-white font-bold py-2 rounded-xl transition-all text-sm">Hapus</button>
                     {% endif %}
                 </div>
             </div>
         </div>
+        {% empty %}
+        <p class="text-gray-500 col-span-3">Belum ada venue.</p>
+        {% endfor %}
 
     </div>
 </div>

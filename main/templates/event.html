@@ -37,13 +37,13 @@
                     <select name="venue" class="flex-1 py-3 px-4 bg-gray-100 rounded-xl outline-none">
                         <option value="">Semua Venue</option>
                         {% for v in venues %}
-                        <option value="{{ v.id }}" {% if request.GET.venue == v.id|stringformat:"i" %}selected{% endif %}>{{ v.name }}</option>
+                        <option value="{{ v.id }}" {% if request.GET.venue == v.id|stringformat:"s" %}selected{% endif %}>{{ v.name }}</option>
                         {% endfor %}
                     </select>
                     <select name="artist" class="flex-1 py-3 px-4 bg-gray-100 rounded-xl outline-none">
                         <option value="">Semua Artist</option>
                         {% for a in artists %}
-                        <option value="{{ a.id }}" {% if request.GET.artist == a.id|stringformat:"i" %}selected{% endif %}>{{ a.name }}</option>
+                        <option value="{{ a.id }}" {% if request.GET.artist == a.id|stringformat:"s" %}selected{% endif %}>{{ a.name }}</option>
                         {% endfor %}
                     </select>
                     <button class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold transition duration-200">Cari</button>
@@ -112,7 +112,7 @@
                         <div class="flex gap-2 bg-gray-50 p-3 rounded-xl border items-center">
                             <input type="text" placeholder="Nama Tiket" class="cat-name flex-1 bg-transparent outline-none text-sm" required>
                             <input type="number" placeholder="Harga" class="cat-price w-28 bg-transparent outline-none text-sm" required>
-                            <input type="number" placeholder="Jumlah" class="cat-price w-28 bg-transparent outline-none text-sm" required>
+                            <input type="number" placeholder="Jumlah" class="cat-stock w-28 bg-transparent outline-none text-sm" required>
                             <div class="w-8"></div>
                         </div>
                     </div>
@@ -132,18 +132,7 @@
 
 <script>
     // 1. STATE MANAGEMENT (Konsep sama seperti venue.html agar tidak reset saat disubmit)
-    let eventData = [
-        {
-            name: "Harmoni Alam Konser",
-            date: "2026-05-15",
-            time: "19:00",
-            venue: "Stadion Senayan",
-            categories: [
-                {name: "Festival", price: 150000},
-                {name: "VIP", price: 500000}
-            ]
-        }
-    ];
+    let eventData = JSON.parse('{{ events_json|escapejs }}');
 
     const grid = document.getElementById('eventGrid');
 
@@ -197,7 +186,7 @@
                                 <p class="text-[10px] text-gray-400 font-bold uppercase tracking-widest">Mulai dari</p>
                                 <p class="text-lg font-extrabold text-gray-900">Rp ${minPrice.toLocaleString()}</p>
                             </div>
-                            <button class="bg-gray-900 text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-blue-600 transition-all">Beli Tiket</button>
+                            <a href="{% url 'order_promo:checkout_order' %}?event_id=${event.id}" class="bg-gray-900 text-white px-5 py-2 rounded-xl text-sm font-bold hover:bg-blue-600 transition-all">Beli Tiket</a>
                         </div>
                     </div>
                 </div>
@@ -261,6 +250,7 @@ function openCreateModal() {
             <div class="flex gap-2 bg-gray-50 p-3 rounded-xl border items-center">
                 <input type="text" placeholder="Nama Tiket" class="cat-name flex-1 bg-transparent outline-none text-sm" required>
                 <input type="number" placeholder="Harga" class="cat-price w-28 bg-transparent outline-none text-sm" required>
+                <input type="number" placeholder="Jumlah" class="cat-stock w-28 bg-transparent outline-none text-sm" required>
                 <div class="w-8"></div>
             </div>
         `;
