@@ -26,9 +26,8 @@ env = environ.Env(
     DEBUG=(bool, False)
 )
 
-environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
-SECRET_KEY = env('SECRET_KEY')
-DEBUG = env('DEBUG')
+DEBUG=True
+SECRET_KEY='django-insecure-98ljn@k^#6_4n_ri=qgex5*8b#&yj2s#(h@py2^p*(=7kg!9bd'
 
 
 
