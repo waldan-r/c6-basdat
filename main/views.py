@@ -498,7 +498,6 @@ def list_event(request):
         'venues': venues,
         'artists': artists,
     }
-    
     return render(request, 'event.html', context)
 
 def list_venue(request):
@@ -523,6 +522,7 @@ def list_venue(request):
         'venues': venues,
         'role': role
     }
+
     return render(request, 'venue.html', context)
     
 def placeholder(request, *args, **kwargs):
