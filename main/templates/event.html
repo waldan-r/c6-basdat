@@ -190,6 +190,8 @@
 <script>
     // 1. STATE MANAGEMENT 
     let eventData = JSON.parse('{{ events_js|safe }}');
+    const currentRole = '{{ role }}';
+    const currentUserId = '{{ current_user_id }}';
     const grid = document.getElementById('eventGrid');
 
     // 2. RENDER UI
