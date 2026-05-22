@@ -1,6 +1,14 @@
 from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+from django import forms
+
+class VenueForm(forms.Form):
+    venue_name = forms.CharField(max_length=100)
+    capacity = forms.IntegerField()
+    address = forms.CharField(widget=forms.Textarea)
+    city = forms.CharField(max_length=100)
+    has_reserved_seating = forms.BooleanField(required=False)
 
 class UserAccount(models.Model):
     user_id = models.CharField(max_length=255, primary_key=True) #
@@ -49,55 +57,88 @@ class Organizer(models.Model):
         managed = False
 
 class Venue(models.Model):
-    venue_id = models.CharField(max_length=255, primary_key=True)
+    venue_id = models.UUIDField(
+        primary_key=True,
+        editable=False
+    )
+
     venue_name = models.CharField(max_length=100)
     capacity = models.IntegerField()
     address = models.TextField()
     city = models.CharField(max_length=100)
-
+    has_reserved_seating = models.BooleanField(default=False)
+    
     class Meta:
         db_table = 'venue'
         managed = False
 
     def clean(self):
+        if self.capacity <= 0:
+            raise ValidationError(
+                "Capacity harus lebih dari 0."
+            )
+
         duplicates = Venue.objects.filter(
             venue_name__iexact=self.venue_name,
             city__iexact=self.city
         ).exclude(pk=self.venue_id)
-        
+
         if duplicates.exists():
-            existing = duplicates.first()
             raise ValidationError(
-                f"ERROR: Venue \"{self.venue_name}\" di kota \"{self.city}\" sudah terdaftar dengan ID {existing.pk}."
+                f'Venue "{self.venue_name}" di kota "{self.city}" sudah ada.'
             )
 
     def delete(self, *args, **kwargs):
-        now = timezone.now()
         active_events = Event.objects.filter(
             venue=self,
-            event_datetime__gte=now
+            event_datetime__gte=timezone.now()
         )
-        
+
         if active_events.exists():
             raise ValidationError(
-                f"ERROR: Venue '{self.venue_name}' masih memiliki event aktif sehingga tidak dapat dihapus."
+                f'Venue "{self.venue_name}" masih memiliki event aktif.'
             )
         super().delete(*args, **kwargs)
-    
-    @property
-    def has_reserved_seating(self):
-        return self.capacity % 2 == 0
+
+    def __str__(self):
+        return self.venue_name
+
 
 class Event(models.Model):
-    event_id = models.CharField(max_length=255, primary_key=True)
+    event_id = models.UUIDField(
+        primary_key=True,
+        editable=False
+    )
+
     event_datetime = models.DateTimeField()
+
     event_title = models.CharField(max_length=200)
-    venue = models.ForeignKey(Venue, on_delete=models.CASCADE, db_column='venue_id')
-    organizer = models.ForeignKey(Organizer, on_delete=models.CASCADE, db_column='organizer_id')
+
+    venue = models.ForeignKey(
+        Venue,
+        on_delete=models.CASCADE,
+        db_column='venue_id',
+        related_name='events'
+    )
+
+    organizer = models.ForeignKey(
+        Organizer,
+        on_delete=models.CASCADE,
+        db_column='organizer_id',
+        related_name='events'
+    )
 
     class Meta:
         db_table = 'event'
         managed = False
+        ordering = ['event_datetime']
+
+    def __str__(self):
+        return self.event_title
+    
+    @property
+    def categories(self):
+        return self.ticketcategory_set
 
 class Artist(models.Model):
     artist_id = models.CharField(max_length=255, primary_key=True)
@@ -109,14 +150,25 @@ class Artist(models.Model):
         managed = False
 
 class EventArtist(models.Model):
-    event = models.ForeignKey(Event, on_delete=models.CASCADE, db_column='event_id')
-    artist = models.ForeignKey(Artist, on_delete=models.CASCADE, db_column='artist_id')
+    event = models.ForeignKey(
+        Event,
+        on_delete=models.CASCADE,
+        db_column='event_id',
+        primary_key=True
+    )
+
+    artist = models.ForeignKey(
+        Artist,
+        on_delete=models.CASCADE,
+        db_column='artist_id'
+    )
+
     role = models.CharField(max_length=100)
 
     class Meta:
         db_table = 'event_artist'
         managed = False
-        unique_together = (('event', 'artist'),)
+        unique_together = ('event', 'artist')
 
 class Seat(models.Model):
     seat_id = models.CharField(max_length=255, primary_key=True)

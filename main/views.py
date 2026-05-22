@@ -1,9 +1,12 @@
+from django.core.exceptions import ValidationError
 from django.shortcuts import render, redirect
-import uuid
+from django.http import JsonResponse
+from django.db import transaction
 from django.contrib import messages
-from .models import HasRelationship, Orders, Seat, Ticket, UserAccount, AccountRole, Customer, Organizer, Role, Artist, TicketCategory, Event
+from .models import EventArtist, HasRelationship, Orders, Seat, Ticket, UserAccount, AccountRole, Customer, Organizer, Role, Artist, TicketCategory, Event, Venue
 from django.db.models import Sum, Min, Q
 from django.db import connection
+import uuid, json
 
 # Helper function to convert raw SQL tuples into dictionaries
 def dictfetchall(cursor):
@@ -358,12 +361,26 @@ def list_event(request):
             action = data.get('action')
 
             with transaction.atomic(): 
+                if action == 'DELETE':
+                    event_id = data.get('event_id')
+
+                    try:
+                        event = Event.objects.get(event_id=event_id)
+                        event.delete()
+
+                        return JsonResponse({'status': 'success'})
+                    except Event.DoesNotExist:
+                        return JsonResponse({
+                            'status': 'error',
+                            'message': 'Event tidak ditemukan'
+                        }, status=404)
+                    
                 if action in ['CREATE', 'UPDATE']:
                     # Cari Venue berdasarkan nama yang dikirim dari modal
                     venue_obj = Venue.objects.get(venue_name=data.get('venue'))
                     
                     # Logika Create atau Update
-                    event_id = data.get('event_id') if action == 'UPDATE' else str(uuid.uuid4())[:18]
+                    event_id = data.get('event_id') if action == 'UPDATE' else uuid.uuid4()
                     
                     event, created = Event.objects.update_or_create(
                         event_id=event_id,
@@ -375,11 +392,23 @@ def list_event(request):
                         }
                     )
 
+                    # Simpan relasi artist
+                    EventArtist.objects.filter(event=event).delete()
+
+                    for artist_id in data.get('artists', []):
+                        artist_obj = Artist.objects.get(artist_id=artist_id)
+
+                        EventArtist.objects.create(
+                            event=event,
+                            artist=artist_obj,
+                            role='MAIN'
+                        )
+                        
                     # Simpan Kategori Tiket 
                     TicketCategory.objects.filter(event=event).delete()
                     for cat in data.get('categories', []):
                         TicketCategory.objects.create(
-                            category_id=str(uuid.uuid4())[:18],
+                            category_id= uuid.uuid4(),
                             category_name=cat['name'],
                             price=cat['price'],
                             quota=cat['stock'],
@@ -394,14 +423,20 @@ def list_event(request):
     venue_filter = request.GET.get('venue', '')
     artist_filter = request.GET.get('artist', '')
 
-    events_qs = Event.objects.select_related('venue').prefetch_related('categories', 'eventartist_set__artist')
+    events_qs = Event.objects.select_related('venue')
 
     if search_query:
         events_qs = events_qs.filter(event_title__icontains=search_query)
     if venue_filter:
         events_qs = events_qs.filter(venue_id=venue_filter)
     if artist_filter:
-        events_qs = events_qs.filter(eventartist_set__artist_id=artist_filter)
+        ids = EventArtist.objects.filter(
+            artist=artist_filter
+        ).values_list('event', flat=True)
+
+        events_qs = events_qs.filter(
+            event_id__in=ids
+        ).distinct()
 
     events_data = []
     for e in events_qs:
@@ -414,13 +449,17 @@ def list_event(request):
             'date': e.event_datetime.strftime('%Y-%m-%d'),
             'time': e.event_datetime.strftime('%H:%M'),
             'venue': e.venue.venue_name,
+            'artists': [
+                ea.artist.name
+                for ea in EventArtist.objects.filter(event=e).select_related('artist')
+            ],
             'categories': [{'name': c['category_name'], 'price': int(c['price']), 'stock': c['quota']} for c in cats],
             'min_price': int(min_p)
         })
 
     context = {
         'role': role,
-        'events_js': json.dumps(events_data), 
+        'events_js': json.dumps(events_data, default=str), 
         'venues': Venue.objects.all(),
         'artists': Artist.objects.all(),
     }
@@ -428,65 +467,71 @@ def list_event(request):
 
 def list_venue(request):
     role = request.session.get('role', 'GUEST')
+
     venues_qs = Venue.objects.all().order_by('venue_name')
 
-    # Hitung Statistik Otomatis
-    total_capacity = venues_qs.aggregate(Sum('capacity'))['capacity__sum'] or 0
+    total_venue = venues_qs.count()
+    total_capacity = venues_qs.aggregate(total=Sum('capacity'))['total'] or 0
     total_reserved = venues_qs.filter(has_reserved_seating=True).count()
 
     context = {
         'venues': venues_qs,
         'role': role,
         'stats': {
-            'total_venue': venues_qs.count(),
+            'total_venue': total_venue,
             'total_reserved': total_reserved,
             'total_capacity': total_capacity,
         }
     }
+
     return render(request, 'venue.html', context)
     
 def venue_manage_view(request):
     if request.method == 'POST':
-        action = request.POST.get('action')
-        
         try:
+            action = request.POST.get('action')
+
             if action == 'CREATE':
-                new_venue = Venue(
-                    venue_id=str(uuid.uuid4())[:18],
+                venue = Venue(
+                    venue_id=str(uuid.uuid4()),
                     venue_name=request.POST.get('nama'),
                     address=request.POST.get('alamat'),
                     city=request.POST.get('kota'),
                     capacity=int(request.POST.get('kapasitas')),
                     has_reserved_seating=request.POST.get('reserved') == 'on'
                 )
-                new_venue.save() # Ini akan memicu fungsi clean() di models
-                messages.success(request, "Venue berhasil ditambahkan!")
+                venue.full_clean()   
+                venue.save()         
 
             elif action == 'UPDATE':
-                v_id = request.POST.get('venue_id')
-                venue = Venue.objects.get(pk=v_id)
+                venue = Venue.objects.get(pk=request.POST.get('venue_id'))
                 venue.venue_name = request.POST.get('nama')
                 venue.address = request.POST.get('alamat')
                 venue.city = request.POST.get('kota')
                 venue.capacity = int(request.POST.get('kapasitas'))
                 venue.has_reserved_seating = request.POST.get('reserved') == 'on'
+                venue.full_clean()
                 venue.save()
-                messages.success(request, "Data venue berhasil diperbarui!")
 
             elif action == 'DELETE':
-                v_id = request.POST.get('venue_id')
-                venue = Venue.objects.get(pk=v_id)
-                venue.delete() # Ini akan memicu proteksi event aktif di models
-                messages.success(request, "Venue berhasil dihapus!")
-
-        except ValidationError as e:
-            # Menangkap pesan error dari models.py (Duplikasi & Event Aktif)
-            messages.error(request, e.message)
+                try:
+                    venue = Venue.objects.get(venue_id=request.POST.get('venue_id'))
+                    venue.delete()
+                except ValidationError as e:  
+                    error_msg = e.messages[0] if hasattr(e, 'messages') else str(e)
+                    return JsonResponse({
+                        'status': 'error',
+                        'message': error_msg
+                    }, status=400)
+                
+            else:
+                return JsonResponse({'status': 'error', 'message': 'Action tidak valid'}, status=400)
+            
+            return JsonResponse({'status': 'success'})
         except Exception as e:
-            messages.error(request, f"Terjadi kesalahan: {str(e)}")
-
-    return redirect('list_venue')
-
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'Invalid method'}, status=405)
+        
 def ticket_view(request):
     role = request.session.get('role', 'GUEST')
     

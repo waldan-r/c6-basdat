@@ -5,32 +5,30 @@
 {% block content %}
     <!-- Section Statistik -->
     <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+        
         <!-- Total Venue -->
-        <div class="...">
-            ...
-            <div class="text-white">
-                <p class="...">Total Venue</p>
-                <h3 id="stat-total" class="text-3xl font-bold">{{ stats.total_venue }}</h3>
+        <div class="bg-blue-600 p-6 rounded-xl shadow-md flex items-center gap-4">
+                <div class="text-white">
+                    <p class="text-blue-100 text-sm font-medium uppercase tracking-wider mb-1">Total Venue</p>
+                    <h3 id="stat-total" class="text-3xl font-extrabold">{{ stats.total_venue }}</h3>
+                </div>
             </div>
-        </div>
 
         <!-- Reserved Seating -->
-        <div class="...">
-            ...
-            <div class="text-white">
-                <p class="...">Reserved Seating</p>
-                <h3 id="stat-reserved" class="text-3xl font-bold">{{ stats.total_reserved }}</h3>
+        <div class="bg-indigo-600 p-6 rounded-xl shadow-md flex items-center gap-4">
+                <div class="text-white">
+                    <p class="text-indigo-100 text-sm font-medium uppercase tracking-wider mb-1">Reserved Seating</p>
+                    <h3 id="stat-reserved" class="text-3xl font-extrabold">{{ stats.total_reserved }}</h3>
+                </div>
             </div>
-        </div>
 
         <!-- Total Kapasitas -->
-        <div class="...">
-            ...
-            <div class="text-white">
-                <p class="...">Total Kapasitas</p>
-                <h3 id="stat-kapasitas" class="text-3xl font-bold">{{ stats.total_capacity }}</h3>
+        <div class="bg-emerald-600 p-6 rounded-xl shadow-md flex items-center gap-4">
+                <div class="text-white">
+                    <p class="text-emerald-100 text-sm font-medium uppercase tracking-wider mb-1">Total Kapasitas</p>
+                    <h3 id="stat-kapasitas" class="text-3xl font-extrabold">{{ stats.total_capacity }}</h3>
+                </div>
             </div>
-        </div>
     </div>
 
     <!-- Header -->
@@ -150,7 +148,7 @@
 </div>
 
 <script>
-    // --- 1. Fungsi Inti Statistik ---
+// --- 1. Fungsi Inti Statistik ---
     function updateGlobalStats() {
         const cards = document.querySelectorAll('.venue-card');
         let totalVenue = cards.length;
@@ -158,25 +156,30 @@
         let totalKapasitas = 0;
 
         cards.forEach(card => {
-            // Cek label seating: gunakan includes agar lebih fleksibel
             const label = card.querySelector('.label-seating');
             if (label && label.innerText.toUpperCase().includes('RESERVED')) {
                 totalReserved++;
             }
 
-            // Hitung Kapasitas
             const kapText = card.querySelector('.venue-kapasitas').innerText.replace(/\./g, '');
             totalKapasitas += parseInt(kapText) || 0;
         });
 
-        // Update UI
         document.getElementById('stat-total').innerText = totalVenue;
         document.getElementById('stat-reserved').innerText = totalReserved;
         document.getElementById('stat-kapasitas').innerText = totalKapasitas.toLocaleString('id-ID');
     }
 
-    // Jalankan saat pertama kali dibuka
     document.addEventListener('DOMContentLoaded', updateGlobalStats);
+
+    // --- Fungsi Validasi Tambahan (Memperbaiki Masalah 1 & 2) ---
+    function validateVenue(data) {
+        if (!data.nama) return "Nama venue wajib diisi!";
+        if (!data.alamat) return "Alamat wajib diisi!";
+        if (!data.kota) return "Kota wajib diisi!";
+        if (!data.kapasitas || parseInt(data.kapasitas) <= 0) return "Kapasitas harus berupa angka lebih dari 0!";
+        return null; // Tidak ada error
+    }
 
     // --- 2. Logika CRUD ---
     function toggleModal(id) {
@@ -190,7 +193,6 @@
 
     function simpanVenueBaru() {
         const data = {
-            action: 'CREATE',
             nama: document.getElementById('add-nama').value,
             alamat: document.getElementById('add-alamat').value,
             kota: document.getElementById('add-kota').value,
@@ -198,57 +200,102 @@
             is_reserved: document.getElementById('add-reserved').checked
         };
 
-        if (!data.nama || !data.kapasitas) return alert("Wajib isi Nama & Kapasitas!");
+        const error = validateVenue(data);
+        if (error) return alert(error);
 
-        // Kirim ke Django
+        const formData = new FormData();
+        formData.append("action", "CREATE");
+        formData.append("nama", data.nama);
+        formData.append("alamat", data.alamat);
+        formData.append("kota", data.kota);
+        formData.append("kapasitas", data.kapasitas);
+        formData.append("reserved", data.is_reserved ? "on" : "");
+        formData.append("csrfmiddlewaretoken", "{{ csrf_token }}");
+
         fetch("{% url 'venue_manage' %}", {
             method: "POST",
-            headers: {
-                "X-CSRFToken": "{{ csrf_token }}",
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify(data)
+            body: formData
         })
-        .then(response => response.json())
-        .then(result => {
-            if (result.status === 'success') {
-                location.reload(); // Reload agar data muncul dari database
-            } else {
-                alert("Gagal simpan: " + result.message);
-            }
+        .then(async r => {
+            const data = await r.json();
+            if (!r.ok) throw data;
+            return data;
+        })
+        .then(res => {
+            if (res.status === "success") location.reload();
+            else alert(res.message);
+        })
+        .catch(err => {
+            alert(err.message || "Terjadi error");
         });
     }
 
     function prepareUpdate(id) {
         const card = document.getElementById(id);
-        const label = document.getElementById('label-' + id);
-        
+
         document.getElementById('edit-id').value = id;
         document.getElementById('edit-nama').value = card.querySelector('.venue-nama').innerText;
-        document.getElementById('edit-alamat').value = card.querySelector('.venue-alamat').innerText;
+        
+        // Memisahkan alamat dan kota dari string "Alamat, Kota"
+        const fullAddress = card.querySelector('.venue-alamat').innerText;
+        const addressParts = fullAddress.split(',');
+        
+        if(addressParts.length > 1) {
+            document.getElementById('edit-kota').value = addressParts.pop().trim();
+            document.getElementById('edit-alamat').value = addressParts.join(',').trim();
+        } else {
+            document.getElementById('edit-alamat').value = fullAddress;
+            document.getElementById('edit-kota').value = "";
+        }
+
         document.getElementById('edit-kapasitas').value = card.querySelector('.venue-kapasitas').innerText.replace(/\./g, '');
+
+        const label = card.querySelector('.label-seating');
         document.getElementById('edit-reserved').checked = label.innerText.toUpperCase().includes('RESERVED');
 
         toggleModal('modalUpdateVenue');
     }
 
     function eksekusiUpdate() {
-        const id = document.getElementById('edit-id').value;
-        const card = document.getElementById(id);
-        const label = document.getElementById('label-' + id);
-        const isReserved = document.getElementById('edit-reserved').checked;
+        const data = {
+            nama: document.getElementById('edit-nama').value,
+            alamat: document.getElementById('edit-alamat').value,
+            kota: document.getElementById('edit-kota').value,
+            kapasitas: document.getElementById('edit-kapasitas').value,
+            is_reserved: document.getElementById('edit-reserved').checked
+        };
 
-        if (card) {
-            card.querySelector('.venue-nama').innerText = document.getElementById('edit-nama').value;
-            card.querySelector('.venue-alamat').innerText = document.getElementById('edit-alamat').value;
-            card.querySelector('.venue-kapasitas').innerText = Number(document.getElementById('edit-kapasitas').value).toLocaleString('id-ID');
+        const error = validateVenue(data);
+        if (error) return alert(error);
 
-            label.innerText = isReserved ? 'Reserved Seating' : 'Free Seating';
-            label.className = (isReserved ? 'bg-blue-600' : 'bg-gray-500') + " text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-lg shadow-lg label-seating";
-            
-            updateGlobalStats();
-            toggleModal('modalUpdateVenue');
-        }
+        const venueId = document.getElementById('edit-id').value.replace('venue-', '');
+
+        const formData = new FormData();
+        formData.append("action", "UPDATE");
+        formData.append("venue_id", venueId);
+        formData.append("nama", data.nama);
+        formData.append("alamat", data.alamat);
+        formData.append("kota", data.kota);
+        formData.append("kapasitas", data.kapasitas);
+        formData.append("reserved", data.is_reserved ? "on" : "");
+        formData.append("csrfmiddlewaretoken", "{{ csrf_token }}");
+
+        fetch("{% url 'venue_manage' %}", {
+            method: "POST",
+            body: formData
+        })
+        .then(async r => {
+            const data = await r.json();
+            if (!r.ok) throw data;
+            return data;
+        })
+        .then(res => {
+            if (res.status === "success") location.reload();
+            else alert(res.message);
+        })
+        .catch(err => {
+            alert(err.message || "Terjadi error");
+        });
     }
 
     function prepareDelete(id, nama) {
@@ -258,26 +305,28 @@
     }
 
     function eksekusiHapus() {
-        const venueId = document.getElementById('delete-id').value.replace('venue-', ''); // Ambil ID asli
-        
+        const venueId = document.getElementById('delete-id').value.replace('venue-', '');
+
+        const formData = new FormData();
+        formData.append("action", "DELETE");
+        formData.append("venue_id", venueId);
+        formData.append("csrfmiddlewaretoken", "{{ csrf_token }}");
+
         fetch("{% url 'venue_manage' %}", {
             method: "POST",
-            headers: {
-                "X-CSRFToken": "{{ csrf_token }}",
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                action: 'DELETE',
-                venue_id: venueId
-            })
+            body: formData
         })
-        .then(response => response.json())
-        .then(result => {
-            if (result.status === 'success') {
-                location.reload();
-            } else {
-                alert("Gagal menghapus!");
-            }
+        .then(async r => {
+            const data = await r.json();
+            if (!r.ok) throw data;
+            return data;
+        })
+        .then(res => {
+            if (res.status === "success") location.reload();
+            else alert(res.message);
+        })
+        .catch(err => {
+            alert(err.message || "Terjadi error");
         });
     }
 </script>

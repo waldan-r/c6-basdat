@@ -37,20 +37,20 @@
                     <select name="venue" class="flex-1 py-3 px-4 bg-gray-100 rounded-xl outline-none">
                         <option value="">Semua Venue</option>
                         {% for v in venues %}
-                        <option value="{{ v.id }}" {% if request.GET.venue == v.id|stringformat:"i" %}selected{% endif %}>{{ v.name }}</option>
+                        <option value="{{ v.venue_id }}" {% if request.GET.venue == v.venue_id|stringformat:"s" %}selected{% endif %}>{{ v.venue_name }}</option>
                         {% endfor %}
                     </select>
                     <select name="artist" class="flex-1 py-3 px-4 bg-gray-100 rounded-xl outline-none">
                         <option value="">Semua Artist</option>
                         {% for a in artists %}
-                        <option value="{{ a.id }}" {% if request.GET.artist == a.id|stringformat:"i" %}selected{% endif %}>{{ a.name }}</option>
+                        <option value="{{ a.artist_id }}" {% if request.GET.artist == a.artist_id|stringformat:"s" %}selected{% endif %}>{{ a.name }}</option>
                         {% endfor %}
                     </select>
                     <button class="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3 rounded-xl font-bold transition duration-200">Cari</button>
                 </form>
             </div>
 {% if role == 'ADMIN' or role == 'ORGANIZER' %}
-    <button onclick="toggleModal('eventModal')" class="ml-auto bg-blue-600 hover:bg-blue-700 text-white h-[74px] px-8 rounded-2xl font-bold shadow-lg transition-all hover:scale-105 flex items-center gap-3 whitespace-nowrap">
+    <button onclick="openCreateModal()" class="ml-auto bg-blue-600 hover:bg-blue-700 text-white h-[74px] px-8 rounded-2xl font-bold shadow-lg transition-all hover:scale-105 flex items-center gap-3 whitespace-nowrap">
         <i class="fas fa-plus-circle text-xl"></i>
         <span>Buat Acara</span>
     </button>
@@ -100,9 +100,30 @@
                     <select id="inputVenue" class="w-full px-4 py-3 bg-gray-50 border rounded-xl outline-none" required>
                         <option value="">Pilih Venue</option>
                         {% for v in venues %}
-                        <option value="{{ v.name }}">{{ v.name }}</option>
+                        <option value="{{ v.venue_name }}">{{ v.venue_name }}</option>
                         {% endfor %}
                     </select>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-gray-400 uppercase mb-2">
+                        Artist
+                    </label>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        {% for a in artists %}
+                        <label class="flex items-center gap-2 bg-gray-50 border rounded-xl px-3 py-2 cursor-pointer hover:bg-blue-50">
+                            <input 
+                                type="checkbox"
+                                class="artist-checkbox"
+                                value="{{ a.artist_id }}"
+                            >
+                            <span class="text-sm font-medium text-gray-700">
+                                {{ a.name }}
+                            </span>
+                        </label>
+                        {% endfor %}
+                    </div>
                 </div>
 
                 <div>
@@ -130,6 +151,42 @@
     </div>
 </div>
 
+<!-- ==========================================
+     MODAL DELETE
+     ========================================== -->
+<div id="deleteModal" class="fixed inset-0 z-[70] hidden">
+    <div class="flex items-center justify-center min-h-screen p-4">
+
+        <!-- backdrop -->
+        <div class="fixed inset-0 bg-black/60" onclick="closeDeleteModal()"></div>
+
+        <!-- box -->
+        <div class="relative bg-white w-full max-w-md rounded-3xl shadow-2xl p-6 text-center">
+            
+            <h2 class="text-xl font-bold text-gray-800 mb-2">
+                Hapus Acara
+            </h2>
+
+            <p class="text-gray-500 mb-6">
+                Apakah kamu yakin ingin menghapus acara ini?
+            </p>
+
+            <div class="flex gap-3">
+                <button onclick="closeDeleteModal()"
+                    class="flex-1 py-3 rounded-xl bg-gray-100 font-bold text-gray-600 hover:bg-gray-200">
+                    Tidak
+                </button>
+
+                <button onclick="confirmDelete()"
+                    class="flex-1 py-3 rounded-xl bg-red-600 font-bold text-white hover:bg-red-700">
+                    Ya, Hapus
+                </button>
+            </div>
+
+        </div>
+    </div>
+</div>
+
 <script>
     // 1. STATE MANAGEMENT 
     let eventData = JSON.parse('{{ events_js|safe }}');
@@ -147,14 +204,27 @@
             // Buat Bubble Kategori
             const categoryBubbles = event.categories.map(c => `<span class="category-pill">${c.name}</span>`).join(' ');
 
+            const artistBubbles = event.artists.map(a =>
+                `<span class="bg-pink-100 text-pink-700 px-3 py-1 rounded-full text-xs font-bold">${a}</span>`
+            ).join(' ');
+
             grid.innerHTML += `
                 <div class="bg-white rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all border border-gray-100 relative group">
                     {% if role == 'ADMIN' or role == 'ORGANIZER' %}
-                    <div class="absolute top-4 right-4 z-10">
-                        <button onclick="editEvent(${index})" class="bg-white/90 backdrop-blur text-blue-600 px-4 py-2 rounded-full shadow-md hover:bg-blue-600 hover:text-white transition-all text-xs font-bold flex items-center gap-2">
-                            <i class="fas fa-edit"></i> Edit
+                    <div class="absolute top-4 right-4 z-10 flex items-center gap-2">
+                        <button onclick="editEvent(${index})"
+                            class="bg-white/90 backdrop-blur text-blue-600 px-4 py-2 rounded-full shadow-md hover:bg-blue-600 hover:text-white transition-all text-xs font-bold flex items-center gap-2">
+                            <i class="fas fa-edit"></i>
+                            Edit
+                        </button>
+
+                        <button onclick="openDeleteModal(${index})"
+                            class="bg-white/90 backdrop-blur text-red-600 px-4 py-2 rounded-full shadow-md hover:bg-red-600 hover:text-white transition-all text-xs font-bold flex items-center gap-2">
+                            <i class="fas fa-trash-alt"></i>
+                            Hapus
                         </button>
                     </div>
+
                     {% endif %}
 
                     <div class="h-48 bg-gray-200 overflow-hidden relative">
@@ -167,6 +237,10 @@
                     <div class="p-6">
                         <h5 class="text-xl font-bold mb-2 text-gray-800">${event.name}</h5>
                         
+                        <div class="flex flex-wrap gap-2 mb-4">
+                            ${artistBubbles}
+                        </div>
+
                         <div class="space-y-2 text-sm text-gray-500 mb-6">
                             <div class="flex items-center gap-2">
                                 <i class="far fa-calendar-alt w-5 text-blue-500"></i>
@@ -209,42 +283,48 @@
         resetCategoryRows();
     }
 
-function addCategoryRow(name='', price='', stock='') {
-    const wrapper = document.getElementById('categoryWrapper');
-    const div = document.createElement('div');
-    
-    // Kita kasih border merah tipis biar kelihatan areanya
-    div.className = "flex gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200 items-center mb-2 category-row";
-    
-    div.innerHTML = `
-        <input type="text" placeholder="Nama" class="cat-name flex-1 bg-white p-2 border rounded-lg outline-none text-sm" value="${name}" required>
+    function addCategoryRow(name='', price='', stock='') {
+        const wrapper = document.getElementById('categoryWrapper');
+        const div = document.createElement('div');
         
-        <div class="flex items-center gap-1">
-            <span class="text-gray-400 text-xs">Rp</span>
-            <input type="number" placeholder="Harga" min="1" class="cat-price w-24 bg-white p-2 border rounded-lg outline-none text-sm font-bold" value="${price}" required>
-        </div>
-
-        <div class="flex items-center gap-1">
-            <span class="text-gray-400 text-xs">Stok</span>
-            <input type="number" placeholder="Qty" min="0" class="cat-stock w-16 bg-white p-2 border rounded-lg outline-none text-sm" value="${stock}" required>
-        </div>
+        // Kita kasih border merah tipis biar kelihatan areanya
+        div.className = "flex gap-3 bg-gray-50 p-3 rounded-xl border border-gray-200 items-center mb-2 category-row";
         
-        <!-- TOMBOL HAPUS: Dibuat mencolok dengan warna merah -->
-        <button type="button" onclick="this.parentElement.remove()" class="bg-red-100 text-red-600 w-10 h-10 rounded-lg flex items-center justify-center hover:bg-red-600 hover:text-white transition-all">
-            <i class="fas fa-trash-alt"></i>
-        </button>
-    `;
-    
-    wrapper.appendChild(div);
-}
+        div.innerHTML = `
+            <input type="text" placeholder="Nama" class="cat-name flex-1 bg-white p-2 border rounded-lg outline-none text-sm" value="${name}" required>
+            
+            <div class="flex items-center gap-1">
+                <span class="text-gray-400 text-xs">Rp</span>
+                <input type="number" placeholder="Harga" min="1" class="cat-price w-24 bg-white p-2 border rounded-lg outline-none text-sm font-bold" value="${price}" required>
+            </div>
 
-// Pastikan saat buka modal, fungsi ini dipanggil
-function openCreateModal() {
-    const wrapper = document.getElementById('categoryWrapper');
-    wrapper.innerHTML = ''; // Kosongkan dulu
-    addCategoryRow(); // Tambah baris pertama yang ada tombol hapusnya
-    document.getElementById('eventModal').classList.remove('hidden');
-}    function resetCategoryRows() {
+            <div class="flex items-center gap-1">
+                <span class="text-gray-400 text-xs">Stok</span>
+                <input type="number" placeholder="Qty" min="0" class="cat-stock w-16 bg-white p-2 border rounded-lg outline-none text-sm" value="${stock}" required>
+            </div>
+            
+            <!-- TOMBOL HAPUS: Dibuat mencolok dengan warna merah -->
+            <button type="button" onclick="this.parentElement.remove()" class="bg-red-100 text-red-600 w-10 h-10 rounded-lg flex items-center justify-center hover:bg-red-600 hover:text-white transition-all">
+                <i class="fas fa-trash-alt"></i>
+            </button>
+        `;
+        
+        wrapper.appendChild(div);
+    }
+
+    // Pastikan saat buka modal, fungsi ini dipanggil
+    function openCreateModal() {
+        const wrapper = document.getElementById('categoryWrapper');
+        wrapper.innerHTML = '';
+        addCategoryRow();
+        document.getElementById('eventModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        document.getElementById('eventForm').reset();
+        document.getElementById('editIndex').value = "-1";
+        document.getElementById('modalTitle').innerText = "Buat Acara";
+    }
+
+    function resetCategoryRows() {
         const wrapper = document.getElementById('categoryWrapper');
         wrapper.innerHTML = `
             <div class="flex gap-2 bg-gray-50 p-3 rounded-xl border items-center">
@@ -255,6 +335,56 @@ function openCreateModal() {
         `;
     }
 
+    // DELETE CARD
+
+    let deleteIndex = null;
+
+    function openDeleteModal(index) {
+        deleteIndex = index;
+        document.getElementById('deleteModal').classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeDeleteModal() {
+        deleteIndex = null;
+        document.getElementById('deleteModal').classList.add('hidden');
+        document.body.style.overflow = 'auto';
+    }
+
+    function confirmDelete() {
+        if (deleteIndex === null) return;
+
+        const event = eventData[deleteIndex];
+
+        fetch("{% url 'list_event' %}", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "X-CSRFToken": "{{ csrf_token }}"
+            },
+            body: JSON.stringify({
+                action: "DELETE",
+                event_id: event.id
+            })
+        })
+        .then(res => res.json())
+        .then(result => {
+            console.log(result);
+
+            if (result.status === "success") {
+                eventData.splice(deleteIndex, 1);
+                renderEvents();
+                closeDeleteModal();
+            } else {
+                alert("Gagal hapus: " + result.message);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert("Server error");
+        });
+    }
+
     // 4. SUBMIT (CREATE & UPDATE)
     document.getElementById('eventForm').addEventListener('submit', function(e) {
         e.preventDefault();
@@ -262,7 +392,10 @@ function openCreateModal() {
         const names = document.querySelectorAll('.cat-name');
         const prices = document.querySelectorAll('.cat-price');
         const stocks = document.querySelectorAll('.cat-stock');
-        
+        const selectedArtists = Array.from(
+            document.querySelectorAll('.artist-checkbox:checked')
+            ).map(cb => cb.value);
+
         let categories = [];
         let isValid = true;
 
@@ -293,6 +426,7 @@ function openCreateModal() {
             date: document.getElementById('inputDate').value,
             time: document.getElementById('inputTime').value,
             venue: document.getElementById('inputVenue').value,
+            artists: selectedArtists,
             categories: categories
         };
 
@@ -309,6 +443,7 @@ function openCreateModal() {
             if (result.status === 'success') {
                 location.reload();
             } else {
+                console.log(result);
                 alert("Terjadi kesalahan: " + result.message);
             }
         })
@@ -322,7 +457,7 @@ function openCreateModal() {
     function editEvent(index) {
         const event = eventData[index];
         document.getElementById('modalTitle').innerText = "Edit Acara";
-        document.getElementById('editIndex').value = index;
+        document.getElementById('editIndex').value = event.id;
         
         document.getElementById('inputName').value = event.name;
         document.getElementById('inputDate').value = event.date;
