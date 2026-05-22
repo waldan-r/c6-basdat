@@ -846,7 +846,7 @@ def ticket_view(request: HttpRequest):
             
             cursor.execute(base_query, params)
             # print(cursor.description)
-            tickets = dictfetchall(cursor)
+            tickets = fetchall(cursor)
 
             # TODO: Paid atau gmn
             # cursor.execute("select distinct payment_status from orders")
@@ -860,13 +860,13 @@ def ticket_view(request: HttpRequest):
             
             if role in ('ADMIN', 'ORGANIZER'):
                 cursor.execute("select * from orders o join customer c on c.customer_id = o.customer_id")
-                orders_options = dictfetchall(cursor)
+                orders_options = fetchall(cursor)
                 
                 events_options_query = f"select * from event{
                     f" where organizer_id = {user_id}" if role == 'ORGANIZER' else ""}"
 
                 cursor.execute(events_options_query)
-                events_options = dictfetchall(cursor)
+                events_options = fetchall(cursor)
                 
                 categories_options_query = f"""
                     select 
@@ -887,7 +887,7 @@ def ticket_view(request: HttpRequest):
                     having coalesce(count(t.ticket_id), 0) < tc.quota
                 """
                 cursor.execute(categories_options_query)
-                categories_options = dictfetchall(cursor)
+                categories_options = fetchall(cursor)
                 
                 seats_options_query = f"""
                     select *,
@@ -902,7 +902,7 @@ def ticket_view(request: HttpRequest):
                     {f" where e.organizer_id = {user_id}" if role == 'ORGANIZER' else ""}
                 """
                 cursor.execute(seats_options_query)
-                seats_options = dictfetchall(cursor)
+                seats_options = fetchall(cursor)
 
             context = {
                 'tickets': tickets,
@@ -917,3 +917,36 @@ def ticket_view(request: HttpRequest):
             }
             return render(request, 'tickets.html', context)
     
+def seats_view(request):
+    if request.method == "GET":
+        ticket_filter = (request.GET.get('ticket_filter') or '').strip()
+        status_filter = (request.GET.get('ticket_status') or '').strip()
+
+    with db_cursor() as cursor:
+        cursor.execute(
+            """
+            SELECT distinct s.seat_id, s.section, s.row_number, s.seat_number, v.venue_name, sid 
+            FROM seat s
+            JOIN venue v ON v.venue_id = s.venue_id 
+            left join (select distinct seat_id as sid from has_relationship) hr ON hr.sid = s.seat_id
+            ORDER BY v.venue_name, s.section, s.row_number, s.seat_number
+            """
+        )
+        seats = fetchall(cursor)
+        
+        cursor.execute("SELECT COUNT(*) FROM seat")
+        seats_count = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM seat s WHERE s.seat_id NOT IN (SELECT hr.seat_id FROM has_relationship hr)")
+        seats_count_available = cursor.fetchone()[0]
+
+        cursor.execute("SELECT COUNT(*) FROM seat s WHERE s.seat_id IN (SELECT hr.seat_id FROM has_relationship hr)")
+        seats_count_occupied = cursor.fetchone()[0]
+
+        context = {
+            'seats': seats,
+            'seats_count': seats_count,
+            'seats_count_available': seats_count_available,
+            'seats_count_occupied': seats_count_occupied
+        }
+    return render(request, 'seats.html', context)

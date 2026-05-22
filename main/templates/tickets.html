@@ -236,8 +236,7 @@
                         <option value="">Tanpa Kursi (Free Seating)</option>
                         {% for seat in seats_options %}
                         <option value="{{ seat.seat_id }}" data-event="{{ seat.event_id }}"
-                            data-occupied-by="{{ seat.occupied_by_ticket_id|default:'' }}">Nomor Kursi: {{ seat.seat_id
-                            }}</option>
+                            data-occupied-by="{{ seat.occupied_by_ticket_id|default:'' }}">{{ seat.section }} - Baris  {{ seat.row_number }}, No. {{ seat.seat_number }}</option>
                         {% endfor %}
                     </select>
                 </div>
